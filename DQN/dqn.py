@@ -6,7 +6,7 @@
 #
 
 import copy
-from typing import Callable
+from typing import Callable, List
 
 import hydra
 import optuna
@@ -59,7 +59,7 @@ def compute_critic_loss_transitional(
 # %%
 def make_wrappers(
         autoreset: bool,
-) -> list[Callable[[Env], Env]]:
+) -> List[Callable[[Env], Env]]:
     return [AutoResetWrapper] if autoreset else []
 
 
