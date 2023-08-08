@@ -1,18 +1,25 @@
 import math
 import torch
-from bbrl.agents.agent import Agent
+from bbrl.agents.agent import Agent, TimeAgent, SerializableAgent
 from torch.distributions import Normal
+from bbrl.agents.seeding import SeedableAgent
 
 
-class EGreedyActionSelector(Agent):
+RichAgent = TimeAgent, SeedableAgent, SerializableAgent
+
+class EGreedyActionSelector(RichAgent):
     def __init__(self, epsilon):
         super().__init__()
         self.epsilon = epsilon
+
+    def decay(self):
+        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_end)
 
     def forward(self, t, **kwargs):
         q_values = self.get(("q_values", t))
         nb_actions = q_values.size()[1]
         size = q_values.size()[0]
+        # TODO: make it deterministic if seeded
         is_random = torch.rand(size).lt(self.epsilon).float()
         random_action = torch.randint(low=0, high=nb_actions, size=(size,))
         max_action = q_values.max(1)[1]
@@ -21,7 +28,7 @@ class EGreedyActionSelector(Agent):
         self.set(("action", t), action)
 
 
-class SoftmaxActionSelector(Agent):
+class SoftmaxActionSelector(RichAgent):
     def __init__(self, temperature):
         super().__init__()
         self.temperature = temperature
@@ -33,7 +40,7 @@ class SoftmaxActionSelector(Agent):
         self.set(("action", t), action)
 
 
-class RandomDiscreteActor(Agent):
+class RandomDiscreteActor(RichAgent):
     def __init__(self, nb_actions):
         super().__init__()
         self.nb_actions = nb_actions
@@ -45,7 +52,7 @@ class RandomDiscreteActor(Agent):
         self.set(("action", t), action)
 
 
-class AddGaussianNoise(Agent):
+class AddGaussianNoise(RichAgent):
     def __init__(self, sigma):
         super().__init__()
         self.sigma = sigma
@@ -57,7 +64,7 @@ class AddGaussianNoise(Agent):
         self.set(("action", t), action)
 
 
-class AddOUNoise(Agent):
+class AddOUNoise(RichAgent):
     """
     Ornstein Uhlenbeck process noise for actions as suggested by DDPG paper
     """
@@ -79,7 +86,7 @@ class AddOUNoise(Agent):
         self.set(("action", t), x)
 
 
-class KLAgent(Agent):
+class KLAgent(RichAgent):
     def __init__(self, model_1, model_2):
         super().__init__()
         self.model_1 = model_1

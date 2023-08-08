@@ -30,6 +30,8 @@ from bbrl.agents.gymnasium import ParallelGymAgent
 from bbrl.utils.replay_buffer import ReplayBuffer
 from bbrl.agents.seeding import SeedableAgent
 
+from bbrl_algos.models.exploration_agents import EGreedyActionSelector
+
 
 # %%
 def compute_critic_loss_transitional(
@@ -103,9 +105,10 @@ def build_mlp(sizes, activation, output_activation=nn.Identity()):
         layers += [nn.Linear(sizes[j], sizes[j + 1]), act]
     return nn.Sequential(*layers)
 
+RichAgent = TimeAgent, SeedableAgent, SerializableAgent
 
 # %%
-class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
+class DiscreteQAgent(RichAgent):
     def __init__(
             self,
             state_dim,
@@ -127,33 +130,6 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
             action = q_values.argmax(1)
             self.set(("action", t), action)
 
-
-# %%
-
-ActionSelector = TimeAgent, SeedableAgent, SerializableAgent
-
-
-class EGreedyActionSelector(*ActionSelector):
-    def __init__(self, epsilon_start, epsilon_end, epsilon_decay, **kwargs):
-        super().__init__(**kwargs)
-        self.epsilon = epsilon_start
-        self.epsilon_end = epsilon_end
-        self.epsilon_decay = epsilon_decay
-
-    def decay(self):
-        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_end)
-
-    def forward(self, t, **kwargs):
-        q_values = self.get(("q_values", t))
-        nb_actions = q_values.size()[1]
-        size = q_values.size()[0]
-        # TODO: make it deterministic if seeded
-        is_random = torch.rand(size).lt(self.epsilon).float()
-        random_action = torch.randint(low=0, high=nb_actions, size=(size,))
-        max_action = q_values.max(1)[1]
-        action = is_random * random_action + (1 - is_random) * max_action
-        action = action.long()
-        self.set(("action", t), action)
 
 
 # %%
