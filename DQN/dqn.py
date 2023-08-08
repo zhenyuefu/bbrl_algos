@@ -111,20 +111,16 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
             state_dim,
             hidden_layers,
             action_dim,
-            env_agent_output: str,
             *args,
             **kwargs,
     ):
         super().__init__(*args, **kwargs)
-
-        self.env_agent_output = env_agent_output
-
         self.model = build_mlp(
             [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
         )
 
     def forward(self, t: int, choose_action=True, **kwargs):
-        obs = self.get((self.env_agent_output + "env_obs", t)).float()
+        obs = self.get(("env/env_obs", t)).float()
         q_values = self.model(obs)
         self.set(("q_values", t), q_values)
         if choose_action:
@@ -161,7 +157,7 @@ class EGreedyActionSelector(*ActionSelector):
 
 
 # %%
-def create_dqn_agent(cfg_algo, gym_agent_output, train_env_agent, eval_env_agent):
+def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     obs_space = train_env_agent.get_observation_space()
     obs_shape = obs_space.shape if len(obs_space.shape) > 0 else obs_space.n
 
@@ -173,7 +169,6 @@ def create_dqn_agent(cfg_algo, gym_agent_output, train_env_agent, eval_env_agent
         hidden_layers=list(cfg_algo.architecture.hidden_sizes),
         action_dim=act_shape,
         seed=cfg_algo.seed.q,
-        env_agent_output=gym_agent_output,
     )
     critic_target = copy.deepcopy(critic)
 
@@ -213,20 +208,18 @@ def run_dqn(trial, cfg, logger):
         make_env_fn=get_class(cfg.gym_env_train),
         num_envs=cfg.algorithm.n_envs_train,
         make_env_args=get_arguments(cfg.gym_env_train),
-        output_string=cfg.env.name + "/",
         seed=cfg.algorithm.seed.train,
     )
     eval_env_agent = ParallelGymAgent(
         make_env_fn=get_class(cfg.gym_env_eval),
         num_envs=cfg.algorithm.n_envs_eval,
         make_env_args=get_arguments(cfg.gym_env_eval),
-        output_string=cfg.env.name + "/",
         seed=cfg.algorithm.seed.eval,
     )
 
     # 2) Create the DQN-like Agent
     train_agent, eval_agent, q_agent, q_agent_target = create_dqn_agent(
-        cfg.algorithm, cfg.env.name + "/", train_env_agent, eval_env_agent
+        cfg.algorithm, train_env_agent, eval_env_agent
     )
 
     # 3) Create the training workspace
@@ -267,7 +260,7 @@ def run_dqn(trial, cfg, logger):
             )
 
         transition_workspace = train_workspace.get_transitions(
-            filter_key=cfg.env.name + "/done"
+            filter_key="env/done"
         )
 
         action = transition_workspace["action"]
@@ -287,9 +280,9 @@ def run_dqn(trial, cfg, logger):
 
             q_values, terminated, truncated, reward, action = sampled_trans_ws[
                 "q_values",
-                cfg.env.name + '/terminated',
-                cfg.env.name + '/truncated',
-                cfg.env.name + '/reward',
+                'env/terminated',
+                'env/truncated',
+                'env/reward',
                 "action",
             ]
 
@@ -342,10 +335,10 @@ def run_dqn(trial, cfg, logger):
             eval_agent(
                 eval_workspace,
                 t=0,
-                stop_variable=cfg.env.name + "/done",
+                stop_variable="env/done",
                 choose_action=True,
             )
-            rewards = eval_workspace[cfg.env.name + "/cumulated_reward"][-1]
+            rewards = eval_workspace["env/cumulated_reward"][-1]
             mean, std = rewards.mean(), rewards.std()
             if mean > best_reward:
                 best_reward = mean
@@ -390,8 +383,6 @@ def main(cfg: DictConfig):
 
         cfg_sampled = cfg.copy()
         cfg_sampled = get_trial_config(trial, cfg_sampled)
-
-        print(cfg_sampled)
 
         logger = MyLogger(cfg_sampled)
         try:
