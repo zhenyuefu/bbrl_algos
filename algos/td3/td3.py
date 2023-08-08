@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import gym
-import my_gym
+import bbrl_gymnasium
 import hydra
 
 from omegaconf import DictConfig
@@ -25,8 +25,8 @@ from bbrl_examples.models.shared_models import soft_update_params
 from bbrl.agents.gymb import AutoResetGymAgent, NoAutoResetGymAgent
 from bbrl_examples.models.exploration_agents import AddGaussianNoise
 
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 # HYDRA_FULL_ERROR = 1
 

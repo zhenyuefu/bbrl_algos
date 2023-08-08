@@ -60,8 +60,8 @@ from bbrl_examples.models.critics import VAgent
 from bbrl_examples.models.exploration_agents import KLAgent
 
 # Allow to display a policy and a critic as a 2D map
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 import matplotlib
 

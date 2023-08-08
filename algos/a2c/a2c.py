@@ -2,7 +2,7 @@ import sys
 import os
 
 import gym
-import my_gym
+import bbrl_gymnasium
 
 from omegaconf import DictConfig
 from bbrl import get_arguments, get_class
@@ -27,8 +27,8 @@ from bbrl.agents.gymb import AutoResetGymAgent, NoAutoResetGymAgent
 from bbrl_examples.models.loggers import Logger
 from bbrl.utils.chrono import Chrono
 
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 # HYDRA_FULL_ERROR = 1
 

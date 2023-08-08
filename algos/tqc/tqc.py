@@ -3,7 +3,7 @@ import os
 import copy
 import torch
 import gym
-import bbrl_gym
+import bbrl_gymnasium
 import hydra
 import numpy as np
 
@@ -23,8 +23,8 @@ from bbrl_examples.models.critics import TruncatedQuantileNetwork
 from bbrl_examples.models.shared_models import soft_update_params
 from bbrl_examples.models.envs import create_env_agents
 
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 # HYDRA_FULL_ERROR = 1
 

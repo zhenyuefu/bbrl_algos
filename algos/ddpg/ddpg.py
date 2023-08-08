@@ -16,8 +16,8 @@ from bbrl.agents import Agents, TemporalAgent
 from bbrl.utils.replay_buffer import ReplayBuffer
 from bbrl.utils.chrono import Chrono
 
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 from bbrl_examples.models.actors import ContinuousDeterministicActor
 from bbrl_examples.models.critics import ContinuousQAgent

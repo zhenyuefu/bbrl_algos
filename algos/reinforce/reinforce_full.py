@@ -22,8 +22,8 @@ from bbrl_examples.models.loggers import Logger
 from bbrl.utils.chrono import Chrono
 
 
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 
 def apply_sum(reward):
