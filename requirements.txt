@@ -1,0 +1,3 @@
+wandb
+optuna
+bbrl @ git+https://github.com/osigaud/bbrl@dev
