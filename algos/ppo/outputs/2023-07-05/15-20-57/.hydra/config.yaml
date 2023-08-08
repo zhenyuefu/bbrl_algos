@@ -1,0 +1,39 @@
+save_best: false
+plot_agents: false
+logger:
+  classname: bbrl.utils.logger.TFLogger
+  log_dir: ./ppo_logs/
+  verbose: false
+  every_n_seconds: 10
+algorithm:
+  seed: 5
+  max_grad_norm: 0.5
+  n_envs: 1
+  n_steps: 10
+  eval_interval: 1000
+  nb_evals: 1
+  gae: 0.95
+  max_epochs: 200
+  discount_factor: 0.9
+  clip_range: 0.2
+  clip_range_vf: 0
+  entropy_coef: 2.0e-07
+  critic_coef: 0.4
+  policy_coef: 1
+  opt_epochs: 10
+  batch_size: 50
+  beta: 0.0
+  policy_type: TunableVariancePPOActor
+  architecture:
+    policy_hidden_size:
+    - 64
+    - 64
+    critic_hidden_size:
+    - 64
+    - 64
+gym_env:
+  classname: __main__.make_gym_env
+  env_name: SingleStateMDP-v0
+optimizer:
+  classname: torch.optim.Adam
+  lr: 0.001
