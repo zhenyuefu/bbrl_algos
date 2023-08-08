@@ -5,9 +5,8 @@
 #  LICENSE file in the root directory of this source tree.
 #
 
-import os
 import copy
-from typing import Callable
+from typing import Callable, List
 
 import hydra
 import optuna
@@ -23,13 +22,14 @@ from gymnasium import Env
 from gymnasium.wrappers import AutoResetWrapper
 
 # %%
-from bbrl import TimeAgent, SerializableAgent
 from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
-from bbrl.agents import Agents, TemporalAgent, PrintAgent
+from bbrl.agents import Agents, TemporalAgent
 from bbrl.agents.gymnasium import ParallelGymAgent
 from bbrl.utils.replay_buffer import ReplayBuffer
-from bbrl.agents.seeding import SeedableAgent
+
+from models.exploration_agents import RichAgent
+from models.exploration_agents import EGreedyActionSelector
 
 
 # %%
@@ -58,14 +58,9 @@ def compute_critic_loss_transitional(
 
 
 # %%
-# to get access to my modified version of cartpole v2 env :
-import environments
-
-
-# %%
 def make_wrappers(
         autoreset: bool,
-) -> list[Callable[[Env], Env]]:
+) -> List[Callable[[Env], Env]]:
     return [AutoResetWrapper] if autoreset else []
 
 
@@ -109,28 +104,23 @@ def build_mlp(sizes, activation, output_activation=nn.Identity()):
         layers += [nn.Linear(sizes[j], sizes[j + 1]), act]
     return nn.Sequential(*layers)
 
-
 # %%
-class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
+class DiscreteQAgent(RichAgent):
     def __init__(
             self,
             state_dim,
             hidden_layers,
             action_dim,
-            env_agent_output: str,
             *args,
             **kwargs,
     ):
         super().__init__(*args, **kwargs)
-
-        self.env_agent_output = env_agent_output
-
         self.model = build_mlp(
             [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
         )
 
     def forward(self, t: int, choose_action=True, **kwargs):
-        obs = self.get((self.env_agent_output + "env_obs", t)).float()
+        obs = self.get(("env/env_obs", t)).float()
         q_values = self.model(obs)
         self.set(("q_values", t), q_values)
         if choose_action:
@@ -138,36 +128,9 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
             self.set(("action", t), action)
 
 
-# %%
-
-ActionSelector = TimeAgent, SeedableAgent, SerializableAgent
-
-
-class EGreedyActionSelector(*ActionSelector):
-    def __init__(self, epsilon_start, epsilon_end, epsilon_decay, **kwargs):
-        super().__init__(**kwargs)
-        self.epsilon = epsilon_start
-        self.epsilon_end = epsilon_end
-        self.epsilon_decay = epsilon_decay
-
-    def decay(self):
-        self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_end)
-
-    def forward(self, t, **kwargs):
-        q_values = self.get(("q_values", t))
-        nb_actions = q_values.size()[1]
-        size = q_values.size()[0]
-        # TODO: make it deterministic if seeded
-        is_random = torch.rand(size).lt(self.epsilon).float()
-        random_action = torch.randint(low=0, high=nb_actions, size=(size,))
-        max_action = q_values.max(1)[1]
-        action = is_random * random_action + (1 - is_random) * max_action
-        action = action.long()
-        self.set(("action", t), action)
-
 
 # %%
-def create_dqn_agent(cfg_algo, gym_agent_output, train_env_agent, eval_env_agent):
+def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     obs_space = train_env_agent.get_observation_space()
     obs_shape = obs_space.shape if len(obs_space.shape) > 0 else obs_space.n
 
@@ -179,7 +142,6 @@ def create_dqn_agent(cfg_algo, gym_agent_output, train_env_agent, eval_env_agent
         hidden_layers=list(cfg_algo.architecture.hidden_sizes),
         action_dim=act_shape,
         seed=cfg_algo.seed.q,
-        env_agent_output=gym_agent_output,
     )
     critic_target = copy.deepcopy(critic)
 
@@ -214,27 +176,23 @@ def setup_optimizer(optimizer_cfg, q_agent):
 
 # %%
 def run_dqn(trial, cfg, logger):
-    gym_agent_output = cfg.env.name + "/"
-
     # 1) Create the environment agent
     train_env_agent = ParallelGymAgent(
         make_env_fn=get_class(cfg.gym_env_train),
         num_envs=cfg.algorithm.n_envs_train,
         make_env_args=get_arguments(cfg.gym_env_train),
-        output_string=gym_agent_output,
         seed=cfg.algorithm.seed.train,
     )
     eval_env_agent = ParallelGymAgent(
         make_env_fn=get_class(cfg.gym_env_eval),
         num_envs=cfg.algorithm.n_envs_eval,
         make_env_args=get_arguments(cfg.gym_env_eval),
-        output_string=gym_agent_output,
         seed=cfg.algorithm.seed.eval,
     )
 
     # 2) Create the DQN-like Agent
     train_agent, eval_agent, q_agent, q_agent_target = create_dqn_agent(
-        cfg.algorithm, gym_agent_output, train_env_agent, eval_env_agent
+        cfg.algorithm, train_env_agent, eval_env_agent
     )
 
     # 3) Create the training workspace
@@ -252,7 +210,7 @@ def run_dqn(trial, cfg, logger):
     tmp_steps_target_update = 0
     tmp_steps_eval = 0
 
-    while nb_steps < cfg.algorithm.n_steps_mini:
+    while nb_steps < cfg.algorithm.n_steps:
         # Decay the explorer epsilon
         explorer = train_agent.agent.get_by_name("action_selector")
         assert len(explorer) == 1, "There should be only one explorer"
@@ -274,12 +232,17 @@ def run_dqn(trial, cfg, logger):
                 n_steps=cfg.algorithm.n_steps_train,
             )
 
-        transition_workspace = train_workspace.get_transitions(
-            filter_key=gym_agent_output + "done"
+        transition_workspace: Workspace = train_workspace.get_transitions(
+            filter_key="env/done"
         )
 
-        action = transition_workspace["action"]
-        nb_steps += action[0].shape[0]
+        # Only get the required number of steps
+        steps_diff = cfg.algorithm.n_steps - nb_steps
+        if transition_workspace.batch_size() > steps_diff:
+            for key in transition_workspace.keys():
+                transition_workspace.set_full(key, transition_workspace[key][:,:steps_diff])
+
+        nb_steps += transition_workspace.batch_size()
 
         # Store the transition in the replay buffer
         replay_buffer.put(transition_workspace)
@@ -295,10 +258,9 @@ def run_dqn(trial, cfg, logger):
 
             q_values, terminated, truncated, reward, action = sampled_trans_ws[
                 "q_values",
-                *(
-                    f"{gym_agent_output}{suffix}"
-                    for suffix in ("terminated", "truncated", "reward")
-                ),
+                'env/terminated',
+                'env/truncated',
+                'env/reward',
                 "action",
             ]
 
@@ -351,10 +313,10 @@ def run_dqn(trial, cfg, logger):
             eval_agent(
                 eval_workspace,
                 t=0,
-                stop_variable=gym_agent_output + "done",
+                stop_variable="env/done",
                 choose_action=True,
             )
-            rewards = eval_workspace[gym_agent_output + "cumulated_reward"][-1]
+            rewards = eval_workspace["env/cumulated_reward"][-1]
             mean, std = rewards.mean(), rewards.std()
             if mean > best_reward:
                 best_reward = mean
@@ -379,7 +341,6 @@ def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
 
 
 def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
-
     for variable_name in cfg.keys():
         if type(cfg[variable_name]) != DictConfig:
             continue
@@ -390,6 +351,7 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
                 cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
     return cfg
 
+
 # %%
 @hydra.main(config_path=".", config_name="config.yaml") # , version_base="1.3")
 def main(cfg: DictConfig):
@@ -399,8 +361,6 @@ def main(cfg: DictConfig):
 
         cfg_sampled = cfg.copy()
         cfg_sampled = get_trial_config(trial, cfg_sampled)
-
-        print(cfg_sampled)
 
         logger = MyLogger(cfg_sampled)
         try:

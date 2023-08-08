@@ -82,7 +82,7 @@ algorithm:
     low: 0.9
     high: 0.999
 
-  n_steps_mini: 300_000
+  n_steps: 70_000
   eval_interval: 1000
 
 

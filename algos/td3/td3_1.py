@@ -89,7 +89,7 @@ def setup_optimizers(cfg, actor, critic_1, critic_2):
 def compute_critic_loss(cfg, reward, must_bootstrap, q_values_1, q_values_2, q_next):
     # Compute temporal difference
     target = (
-        reward[:-1][0] + cfg.algorithm.discount_factor * q_next * must_bootstrap.int()
+            reward[:-1][0] + cfg.algorithm.discount_factor * q_next * must_bootstrap.int()
     )
     td_1 = target - q_values_1.squeeze(-1)
     td_2 = target - q_values_2.squeeze(-1)
@@ -274,11 +274,11 @@ def run_td3(cfg, reward_logger):
                 if not os.path.exists(directory):
                     os.makedirs(directory)
                 filename = (
-                    directory
-                    + cfg.gym_env.env_name
-                    + "#td3#T1_T2#"
-                    + str(mean.item())
-                    + ".agt"
+                        directory
+                        + cfg.gym_env.env_name
+                        + "#td3#T1_T2#"
+                        + str(mean.item())
+                        + ".agt"
                 )
                 eval_agent.save_model(filename)
                 if cfg.plot_agents:
