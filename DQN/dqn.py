@@ -351,7 +351,7 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 
 
 # %%
-@hydra.main(config_path=".", config_name="config.yaml", version_base="1.3")
+@hydra.main(config_path=".", config_name="config.yaml") # , version_base="1.3")
 def main(cfg: DictConfig):
     torch.random.manual_seed(seed=cfg.algorithm.seed.torch)
 
