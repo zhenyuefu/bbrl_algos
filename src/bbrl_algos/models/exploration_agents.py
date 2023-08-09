@@ -1,16 +1,15 @@
 import math
 import torch
-from bbrl.agents.agent import Agent, TimeAgent, SerializableAgent
+from bbrl.agents import Agent, SeedableAgent, TimeAgent, SerializableAgent
 from torch.distributions import Normal
-from bbrl.agents.seeding import SeedableAgent
 
 
-RichAgent = TimeAgent, SeedableAgent, SerializableAgent
-
-class EGreedyActionSelector(RichAgent):
-    def __init__(self, epsilon):
-        super().__init__()
+class EGreedyActionSelector(TimeAgent, SeedableAgent, SerializableAgent):
+    def __init__(self, epsilon, epsilon_end=None, epsilon_decay=None, **kwargs):
+        super().__init__(**kwargs)
         self.epsilon = epsilon
+        self.epsilon_end = epsilon_end
+        self.epsilon_decay = epsilon_decay
 
     def decay(self):
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_end)
@@ -28,7 +27,8 @@ class EGreedyActionSelector(RichAgent):
         self.set(("action", t), action)
 
 
-class SoftmaxActionSelector(RichAgent):
+
+class SoftmaxActionSelector(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, temperature):
         super().__init__()
         self.temperature = temperature
@@ -40,7 +40,7 @@ class SoftmaxActionSelector(RichAgent):
         self.set(("action", t), action)
 
 
-class RandomDiscreteActor(RichAgent):
+class RandomDiscreteActor(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, nb_actions):
         super().__init__()
         self.nb_actions = nb_actions
@@ -52,7 +52,7 @@ class RandomDiscreteActor(RichAgent):
         self.set(("action", t), action)
 
 
-class AddGaussianNoise(RichAgent):
+class AddGaussianNoise(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, sigma):
         super().__init__()
         self.sigma = sigma
@@ -64,7 +64,7 @@ class AddGaussianNoise(RichAgent):
         self.set(("action", t), action)
 
 
-class AddOUNoise(RichAgent):
+class AddOUNoise(TimeAgent, SeedableAgent, SerializableAgent):
     """
     Ornstein Uhlenbeck process noise for actions as suggested by DDPG paper
     """
@@ -78,15 +78,15 @@ class AddOUNoise(RichAgent):
     def forward(self, t, **kwargs):
         act = self.get(("action", t))
         x = (
-            self.x_prev
-            + self.theta * (act - self.x_prev) * self.dt
-            + self.std_dev * math.sqrt(self.dt) * torch.randn(act.shape)
+                self.x_prev
+                + self.theta * (act - self.x_prev) * self.dt
+                + self.std_dev * math.sqrt(self.dt) * torch.randn(act.shape)
         )
         self.x_prev = x
         self.set(("action", t), x)
 
 
-class KLAgent(RichAgent):
+class KLAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, model_1, model_2):
         super().__init__()
         self.model_1 = model_1

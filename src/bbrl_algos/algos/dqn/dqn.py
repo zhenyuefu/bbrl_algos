@@ -23,13 +23,12 @@ from gymnasium.wrappers import AutoResetWrapper
 
 # %%
 from bbrl import get_arguments, get_class
+from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent, TemporalAgent, Agents
 from bbrl.workspace import Workspace
-from bbrl.agents import Agents, TemporalAgent
 from bbrl.agents.gymnasium import ParallelGymAgent
 from bbrl.utils.replay_buffer import ReplayBuffer
 
-from models.exploration_agents import RichAgent
-from models.exploration_agents import EGreedyActionSelector
+from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 
 
 # %%
@@ -105,7 +104,7 @@ def build_mlp(sizes, activation, output_activation=nn.Identity()):
     return nn.Sequential(*layers)
 
 # %%
-class DiscreteQAgent(RichAgent):
+class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(
             self,
             state_dim,
@@ -145,9 +144,9 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     )
     critic_target = copy.deepcopy(critic)
 
-    explorer = EGreedyActionSelector(
+    explorer =  EGreedyActionSelector(
         name="action_selector",
-        epsilon_start=cfg_algo.explorer.epsilon_start,
+        epsilon=cfg_algo.explorer.epsilon_start,
         epsilon_end=cfg_algo.explorer.epsilon_end,
         epsilon_decay=cfg_algo.explorer.decay,
         seed=cfg_algo.seed.explorer,
@@ -354,13 +353,12 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 
 # %%
 @hydra.main(config_path=".", config_name="config.yaml") # , version_base="1.3")
-def main(cfg: DictConfig):
-    torch.random.manual_seed(seed=cfg.algorithm.seed.torch)
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     def objective(trial):
 
-        cfg_sampled = cfg.copy()
-        cfg_sampled = get_trial_config(trial, cfg_sampled)
+        cfg_sampled = get_trial_config(trial, cfg_raw.copy())
 
         logger = MyLogger(cfg_sampled)
         try:
