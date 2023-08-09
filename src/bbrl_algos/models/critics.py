@@ -6,8 +6,6 @@ from bbrl.agents.agent import Agent
 from bbrl_examples.models.shared_models import build_mlp, build_alt_mlp
 from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
-RichAgent = TimeAgent, SeedableAgent, SerializableAgent
-
 
 class ContinuousQAgent(Agent):
     def __init__(self, state_dim, hidden_layers, action_dim):
@@ -69,7 +67,7 @@ class DiscreteQAgent(RichAgent):
             self.set(("action", t), action)
 """
 
-class DiscreteQAgent(RichAgent):
+class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
     
     def __init__(
         self,
