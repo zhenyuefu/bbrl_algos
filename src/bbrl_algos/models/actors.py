@@ -3,10 +3,12 @@ from abc import ABC
 import torch
 import torch.nn as nn
 
-from bbrl_examples.models.shared_models import build_mlp, build_backbone
+from bbrl_examples.models.shared_models import build_mlp
+from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 from bbrl.agents.agent import Agent
 
+RichAgent = TimeAgent, SeedableAgent, SerializableAgent
 
 class BaseActor(Agent, ABC):
     """Generic class to centralize copy_parameters"""

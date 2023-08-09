@@ -4,6 +4,9 @@ import torch.nn as nn
 from bbrl.agents.agent import Agent
 
 from bbrl_examples.models.shared_models import build_mlp, build_alt_mlp
+from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
+
+RichAgent = TimeAgent, SeedableAgent, SerializableAgent
 
 
 class ContinuousQAgent(Agent):
@@ -42,6 +45,29 @@ class VAgent(Agent):
         critic = self.model(observation).squeeze(-1)
         self.set(("v_value", t), critic)
 
+"""
+class DiscreteQAgent(RichAgent):
+    def __init__(
+            self,
+            state_dim,
+            hidden_layers,
+            action_dim,
+            *args,
+            **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.model = build_mlp(
+            [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
+        )
+
+    def forward(self, t: int, choose_action=True, **kwargs):
+        obs = self.get(("env/env_obs", t)).float()
+        q_values = self.model(obs)
+        self.set(("q_values", t), q_values)
+        if choose_action:
+            action = q_values.argmax(1)
+            self.set(("action", t), action)
+"""
 
 class DiscreteQAgent(Agent):
     def __init__(self, state_dim, hidden_layers, action_dim):

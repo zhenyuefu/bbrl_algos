@@ -29,10 +29,10 @@ from bbrl.agents.gymnasium import ParallelGymAgent
 from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.exploration_agents import EGreedyActionSelector
-
+from bbrl_algos.models.critics import DiscreteQAgent
 
 # %%
-def compute_critic_loss_transitional(
+def compute_critic_loss(
         discount_factor, reward, must_bootstrap, action, q_values, q_target=None
 ):
     """Compute critic loss
@@ -102,29 +102,6 @@ def build_mlp(sizes, activation, output_activation=nn.Identity()):
         act = activation if j < len(sizes) - 2 else output_activation
         layers += [nn.Linear(sizes[j], sizes[j + 1]), act]
     return nn.Sequential(*layers)
-
-# %%
-class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(
-            self,
-            state_dim,
-            hidden_layers,
-            action_dim,
-            *args,
-            **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        self.model = build_mlp(
-            [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
-        )
-
-    def forward(self, t: int, choose_action=True, **kwargs):
-        obs = self.get(("env/env_obs", t)).float()
-        q_values = self.model(obs)
-        self.set(("q_values", t), q_values)
-        if choose_action:
-            action = q_values.argmax(1)
-            self.set(("action", t), action)
 
 
 
@@ -278,7 +255,7 @@ def run_dqn(trial, cfg, logger):
 
             if replay_buffer.size() > cfg.algorithm.buffer.learning_starts:
                 # Compute critic loss
-                critic_loss = compute_critic_loss_transitional(
+                critic_loss = compute_critic_loss(
                     cfg.algorithm.discount_factor,
                     reward,
                     must_bootstrap,
