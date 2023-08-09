@@ -69,9 +69,17 @@ class DiscreteQAgent(RichAgent):
             self.set(("action", t), action)
 """
 
-class DiscreteQAgent(Agent):
-    def __init__(self, state_dim, hidden_layers, action_dim):
-        super().__init__()
+class DiscreteQAgent(RichAgent):
+    
+    def __init__(
+        self,
+        state_dim,
+        hidden_layers,
+        action_dim,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
         self.is_q_function = True
         self.model = build_alt_mlp(
             [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
