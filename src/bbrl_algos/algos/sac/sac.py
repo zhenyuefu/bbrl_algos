@@ -25,7 +25,7 @@ from bbrl_algos.models.stochastic_actors import (
 )
 from bbrl_algos.models.critics import ContinuousQAgent
 from bbrl_algos.models.shared_models import soft_update_params
-from bbrl_algos.models.envs import create_env_agents
+from bbrl_algos.models.envs import get_env_agents
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -104,85 +104,108 @@ def setup_entropy_optimizers(cfg):
     return entropy_coef_optimizer, log_entropy_coef
 
 
-def prepare_critic_loss_data(
-    ag_actor, q_agent_1, q_agent_2, target_q_agent_1, target_q_agent_2, rb_workspace
+# %%
+def compute_critic_loss(
+    cfg, reward, must_bootstrap,
+    t_actor, 
+    q_agents, 
+    target_q_agents, 
+    rb_workspace,
+    ent_coef
 ):
+    """
+    Computes the critic loss for a set of $S$ transition samples
+
+    Args:
+        cfg: The experimental configuration
+        reward: Tensor (2xS) of rewards
+        must_bootstrap: Tensor (S) of indicators
+        t_actor: The actor agent (as a TemporalAgent)
+        q_agents: The critics (as a TemporalAgent)
+        target_q_agents: The target of the critics (as a TemporalAgent)
+        rb_workspace: The transition workspace
+        ent_coef: The entropy coefficient
+
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor]: The two critic losses (scalars)
+    """
+                                                                                                                                                              
     # Compute q_values from both critics with the actions present in the buffer:
     # at t, we have Q(s,a) from the (s,a) in the RB
-    q_agent_1(rb_workspace, t=0, n_steps=1)
-    q_values_rb_1 = rb_workspace["q_value"]
-    q_agent_2(rb_workspace, t=0, n_steps=1)
-    q_values_rb_2 = rb_workspace["q_value"]
+    q_agents(rb_workspace, t=0, n_steps=1)
 
     with torch.no_grad():
-        # Replay the current actor on the replay buffer to get actions of the current policy
-        # change this
-        ag_actor(rb_workspace, t=1, n_steps=1, stochastic=True, predict_proba=False)
+        # Replay the current actor on the replay buffer to get actions of the
+        # current actor
+        t_actor(rb_workspace, t=1, n_steps=1, stochastic=True)
         action_logprobs_next = rb_workspace["action_logprobs"]
-        # Compute target q_values from both target critics: at t+1, we have Q(s+1,a+1) from the (s+1,a+1)
-        # where a+1 has been replaced in the RB
 
-        target_q_agent_1(rb_workspace, t=1, n_steps=1)
-        post_q_values_1 = rb_workspace["q_value"]
-        target_q_agent_2(rb_workspace, t=1, n_steps=1)
-        post_q_values_2 = rb_workspace["q_value"]
+        # Compute target q_values from both target critics: at t+1, we have
+        # Q(s+1,a+1) from the (s+1,a+1) where a+1 has been replaced in the RB
+        target_q_agents(rb_workspace, t=1, n_steps=1)
 
-    post_q_values = torch.min(post_q_values_1, post_q_values_2).squeeze(-1)
-    return q_values_rb_1, q_values_rb_2, post_q_values, action_logprobs_next
+    q_values_rb_1, q_values_rb_2, post_q_values_1, post_q_values_2 = rb_workspace[
+        "critic-1/q_value", "critic-2/q_value", "target-critic-1/q_value", "target-critic-2/q_value"
+    ]
 
+    # [[student]] Compute temporal difference
 
-def compute_critic_loss(
-    cfg,
-    reward,
-    must_bootstrap,
-    q_values_1,
-    q_values_2,
-    q_next,
-    action_logprobs,
-    ent_coef,
-):
-    # Compute temporal difference
-    v_phi = q_next - ent_coef * action_logprobs
+    q_next = torch.min(post_q_values_1[1], post_q_values_2[1]).squeeze(-1)
+    v_phi = q_next - ent_coef * action_logprobs_next
+
     target = (
-        reward[:-1][0] + cfg.algorithm.discount_factor * v_phi * must_bootstrap.int()
+        reward[-1] + cfg.algorithm.discount_factor * v_phi * must_bootstrap.int()
     )
-    td_1 = target - q_values_1.squeeze(-1)
-    td_2 = target - q_values_2.squeeze(-1)
+    td_1 = target - q_values_rb_1[0].squeeze(-1)
+    td_2 = target - q_values_rb_2[0].squeeze(-1)
     td_error_1 = td_1**2
     td_error_2 = td_2**2
     critic_loss_1 = td_error_1.mean()
     critic_loss_2 = td_error_2.mean()
+    # [[/student]]
+
     return critic_loss_1, critic_loss_2
 
 
-def prepare_actor_loss_data(ag_actor, q_agent_1, q_agent_2, rb_workspace):
-    """Actor loss computation (done before any update)"""
-    # Recompute the q_values from the current policy, not from the actions in the buffer
-    ag_actor(rb_workspace, t=0, n_steps=1, stochastic=True, predict_proba=False)
+# %%
+def compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace):
+    """
+    Actor loss computation
+    :param ent_coef: The entropy coefficient $\alpha$
+    :param t_actor: The actor agent (temporal agent)
+    :param q_agents: The critics (as temporal agent)
+    :param rb_workspace: The replay buffer (2 time steps, $t$ and $t+1$)
+    """
+    
+    # Recompute the q_values from the current actor, not from the actions in the buffer
+
+    # [[student]] Recompute the action with the current actor (at $a_t$)
+    t_actor(rb_workspace, t=0, n_steps=1, stochastic=True)
     action_logprobs_new = rb_workspace["action_logprobs"]
-    q_agent_1(rb_workspace, t=0, n_steps=1)
-    q_values_1 = rb_workspace["q_value"]
-    q_agent_2(rb_workspace, t=0, n_steps=1)
-    q_values_2 = rb_workspace["q_value"]
+    # [[/student]]
+
+    # [[student]] Compute Q-values
+    q_agents(rb_workspace, t=0, n_steps=1)
+    q_values_1, q_values_2 = rb_workspace["critic-1/q_value", "critic-2/q_value"]
+    # [[/student]]
     current_q_values = torch.min(q_values_1, q_values_2).squeeze(-1)
-    return action_logprobs_new, current_q_values
 
+    # [[student]] Compute the actor loss
+    ## actor_loss =
+    actor_loss = ent_coef * action_logprobs_new[0] - current_q_values[0]
+    # [[/student]]
 
-def compute_actor_loss(ent_coef, action_logp, q_values):
-    actor_loss = ent_coef * action_logp - q_values
     return actor_loss.mean()
 
 
-def run_sac(cfg):
-    # 1)  Build the  logger
-    logger = Logger(cfg)
+def run_sac(trial, cfg, logger):
     best_reward = float('-inf')
     ent_coef = cfg.algorithm.entropy_coef
 
     # 2) Create the environment agent
-    train_env_agent, eval_env_agent = create_env_agents(cfg)
-
-    # 3) Create the A2C Agent
+    train_env_agent, eval_env_agent = get_env_agents(cfg)
+    
+    # 3) Create the SAC Agent
     (
         train_agent,
         eval_agent,
@@ -192,12 +215,13 @@ def run_sac(cfg):
         critic_2,
         target_critic_2,
     ) = create_sac_agent(cfg, train_env_agent, eval_env_agent)
-    ag_actor = TemporalAgent(actor)
-    q_agent_1 = TemporalAgent(critic_1)
-    target_q_agent_1 = TemporalAgent(target_critic_1)
-    q_agent_2 = TemporalAgent(critic_2)
-    target_q_agent_2 = TemporalAgent(target_critic_2)
+
+    t_actor = TemporalAgent(actor)
+    q_agents = TemporalAgent(Agents(critic_1, critic_2))
+    target_q_agents = TemporalAgent(Agents(target_critic_1, target_critic_2))
     train_workspace = Workspace()
+
+    # Creates a replay buffer
     rb = ReplayBuffer(max_size=cfg.algorithm.buffer_size)
 
     # Configure the optimizer
@@ -205,13 +229,16 @@ def run_sac(cfg):
     entropy_coef_optimizer, log_entropy_coef = setup_entropy_optimizers(cfg)
     nb_steps = 0
     tmp_steps = 0
-    # Initial value of the entropy coef alpha. If target_entropy is not auto, will remain fixed
+
+    # Initial value of the entropy coef alpha. If target_entropy is not auto,
+    # will remain fixed
     if cfg.algorithm.target_entropy == "auto":
         target_entropy = -np.prod(train_env_agent.action_space.shape).astype(np.float32)
     else:
         target_entropy = cfg.algorithm.target_entropy
 
     # Training loop
+    best_agent = actor
     for epoch in range(cfg.algorithm.max_epochs):
         # Execute the agent in the workspace
         if epoch > 0:
@@ -220,9 +247,8 @@ def run_sac(cfg):
             train_agent(
                 train_workspace,
                 t=1,
-                n_steps=cfg.algorithm.n_steps,
+                n_steps=cfg.algorithm.n_steps - 1,
                 stochastic=True,
-                predict_proba=False,
             )
         else:
             train_agent(
@@ -230,89 +256,41 @@ def run_sac(cfg):
                 t=0,
                 n_steps=cfg.algorithm.n_steps,
                 stochastic=True,
-                predict_proba=False,
             )
 
         transition_workspace = train_workspace.get_transitions()
         action = transition_workspace["action"]
         nb_steps += action[0].shape[0]
         rb.put(transition_workspace)
-        rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
-
-        done, truncated, reward, action_logprobs_rb = rb_workspace[
-            "env/done", "env/truncated", "env/reward", "action_logprobs"
-        ]
 
         if nb_steps > cfg.algorithm.learning_starts:
-            # Determines whether values of the critic should be propagated
-            # True if the episode reached a time limit or if the task was not done
-            # See https://colab.research.google.com/drive/1erLbRKvdkdDy0Zn1X_JhC01s1QAt4BBj?usp=sharing
-            must_bootstrap = torch.logical_or(~done[1], truncated[1])
+            # Get a sample from the workspace
+            rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
+
+            terminated, reward = rb_workspace[
+                "env/terminated", "env/reward"
+            ]
+            ent_coef = torch.exp(log_entropy_coef.detach())
+
+            # Critic update part ###############################
+            critic_optimizer.zero_grad()
 
             (
-                q_values_rb_1,
-                q_values_rb_2,
-                post_q_values,
-                action_logprobs_next,
-            ) = prepare_critic_loss_data(
-                ag_actor,
-                q_agent_1,
-                q_agent_2,
-                target_q_agent_1,
-                target_q_agent_2,
+                critic_loss_1, critic_loss_2
+            ) = compute_critic_loss(
+                cfg, 
+                reward, 
+                ~terminated[1],
+                t_actor,
+                q_agents,
+                target_q_agents,
                 rb_workspace,
+                ent_coef
             )
 
-            critic_loss_1, critic_loss_2 = compute_critic_loss(
-                cfg,
-                reward,
-                must_bootstrap,
-                q_values_rb_1[0],
-                q_values_rb_2[0],
-                post_q_values[1],
-                action_logprobs_next,
-                ent_coef,
-            )
             logger.add_log("critic_loss_1", critic_loss_1, nb_steps)
             logger.add_log("critic_loss_2", critic_loss_2, nb_steps)
             critic_loss = critic_loss_1 + critic_loss_2
-
-            action_logprobs_new, current_q_values = prepare_actor_loss_data(
-                ag_actor, q_agent_1, q_agent_2, rb_workspace
-            )
-
-            actor_loss = compute_actor_loss(
-                ent_coef, action_logprobs_new[0], current_q_values[0]
-            )
-            logger.add_log("actor_loss", actor_loss, nb_steps)
-
-            # Entropy coef update part #####################################################
-            if entropy_coef_optimizer is not None:
-                # Important: detach the variable from the graph
-                # so that we don't change it with other losses
-                # see https://github.com/rail-berkeley/softlearning/issues/60
-                ent_coef = torch.exp(log_entropy_coef.detach())
-                # See Eq. (17) of the SAC and Applications paper
-                entropy_coef_loss = -(
-                    log_entropy_coef * (action_logprobs_rb + target_entropy)
-                ).mean()
-                entropy_coef_optimizer.zero_grad()
-                entropy_coef_loss.backward(retain_graph=True)
-                entropy_coef_optimizer.step()
-                logger.add_log("entropy_coef_loss", entropy_coef_loss, nb_steps)
-
-            # Actor update part ###################################################################
-            actor_optimizer.zero_grad()
-            actor_loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                actor.parameters(), cfg.algorithm.max_grad_norm
-            )
-
-            actor_optimizer.step()
-            # Critic update part ############################################################
-            critic_optimizer.zero_grad()
-            # We need to retain the graph because we reuse the action_logprobs are used
-            # to compute both the actor loss and the critic loss
             critic_loss.backward()
             torch.nn.utils.clip_grad_norm_(
                 critic_1.parameters(), cfg.algorithm.max_grad_norm
@@ -321,7 +299,38 @@ def run_sac(cfg):
                 critic_2.parameters(), cfg.algorithm.max_grad_norm
             )
             critic_optimizer.step()
-            #########################################################################################
+
+
+            # Actor update part ###############################
+            actor_optimizer.zero_grad()
+            actor_loss = compute_actor_loss(
+                ent_coef, t_actor, q_agents, rb_workspace
+            )
+            logger.add_log("actor_loss", actor_loss, nb_steps)
+            actor_loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                actor.parameters(), cfg.algorithm.max_grad_norm
+            )
+            actor_optimizer.step()
+
+            # Entropy coef update part #####################################################
+            if entropy_coef_optimizer is not None:
+                # See Eq. (17) of the SAC and Applications paper
+                # log. probs have been computed when computing
+                # the actor loss
+                action_logprobs_rb = rb_workspace[
+                    "action_logprobs"
+                ].detach()
+                entropy_coef_loss = -(
+                    log_entropy_coef.exp() * (action_logprobs_rb + target_entropy)
+                ).mean()
+                entropy_coef_optimizer.zero_grad()
+                entropy_coef_loss.backward()
+                entropy_coef_optimizer.step()
+                logger.add_log("entropy_coef_loss", entropy_coef_loss, nb_steps)
+                logger.add_log("entropy_coef", ent_coef, nb_steps)
+
+            ####################################################
 
             # Soft update of target q function
             tau = cfg.algorithm.tau_target
@@ -329,6 +338,7 @@ def run_sac(cfg):
             soft_update_params(critic_2, target_critic_2, tau)
             # soft_update_params(actor, target_actor, tau)
 
+        # Evaluate ###########################################
         if nb_steps - tmp_steps > cfg.algorithm.eval_interval:
             tmp_steps = nb_steps
             eval_workspace = Workspace()  # Used for evaluation
@@ -337,55 +347,41 @@ def run_sac(cfg):
                 t=0,
                 stop_variable="env/done",
                 stochastic=False,
-                predict_proba=False,
             )
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
-            logger.log_reward_losses(rewards, nb_steps)
-            print(f"nb_steps: {nb_steps}, reward: {mean}")
-            # print("ent_coef", ent_coef)
+            logger.add_log("reward/mean", mean, nb_steps)
+            logger.add_log("reward/max", rewards.max(), nb_steps)
+            logger.add_log("reward/min", rewards.min(), nb_steps)
+            logger.add_log("reward/min", rewards.median(), nb_steps)
+            print(f"nb steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
             if cfg.save_best and mean > best_reward:
                 best_reward = mean
-                directory = "./sac_agent/"
+                directory = f"./agents/{cfg.gym_env.env_name}/sac_agent/"
                 if not os.path.exists(directory):
                     os.makedirs(directory)
-                filename = (
-                    directory
-                    + cfg.gym_env.env_name
-                    + "#sac#team#"
-                    + str(mean.item())
-                    + ".agt"
-                )
-                eval_agent.save_model(filename)
-                if cfg.plot_agents:
-                    plot_policy(
-                        actor,
-                        eval_env_agent,
-                        "./sac_plots/",
-                        cfg.gym_env.env_name,
-                        best_reward,
-                        # stochastic=False,
-                    )
-                    plot_critic(
-                        q_agent_1.agent,  # TODO: do we want to plot both critics?
-                        eval_env_agent,
-                        "./sac_plots/",
-                        cfg.gym_env.env_name,
-                        best_reward,
-                    )
+                filename = directory + "sac_" + str(mean.item()) + ".agt"
+                best_filename = filename
+                actor.save_model(filename)
+
+    if best_filename:
+        # Load agent from disk
+        best_agent = torch.load(best_filename)
+    return best_agent
 
 
 @hydra.main(
     config_path="./configs/",
     # config_name="sac_cartpolecontinuous.yaml",
     config_name="sac_pendulum.yaml",
-    version_base="1.1",
+    # version_base="1.1",
 )
 def main(cfg: DictConfig):
     # print(OmegaConf.to_yaml(cfg))
     chrono = Chrono()
     torch.manual_seed(cfg.algorithm.seed)
-    run_sac(cfg)
+    logger = Logger(cfg)
+    run_sac(None, cfg, logger)
     chrono.stop()
 
 

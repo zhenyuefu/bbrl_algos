@@ -249,10 +249,6 @@ def run_ddpg(trial, cfg, reward_logger):
                 )
                 eval_agent.save_model(filename)
 
-    delta_list_mean = np.array(delta_list).mean(axis=1)
-    delta_list_std = np.array(delta_list).std(axis=1)
-    return delta_list_mean, delta_list_std
-
 
 def main_loop(cfg):
     chrono = Chrono()
@@ -261,7 +257,7 @@ def main_loop(cfg):
         os.makedirs(logdir)
     reward_logger = RewardLogger(logdir + "ddpg.steps", logdir + "ddpg.rwd")
     torch.manual_seed(cfg.algorithm.seed)
-    delta_list_mean, delta_list_std = run_ddpg(cfg, reward_logger)
+    run_ddpg(None, cfg, reward_logger)
     chrono.stop()
     # The code below was designe to compute the difference between DDPG and TD3
     # delta_list_mean_td3, delta_list_std_td3 = run_ddpg(cfg, reward_logger)
