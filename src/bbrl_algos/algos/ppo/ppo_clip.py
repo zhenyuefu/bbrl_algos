@@ -24,7 +24,7 @@ from bbrl import get_arguments, get_class
 
 from bbrl.utils.functional import gae
 
-from bbrl_algos.models.loggers import MyLogger, Logger
+from bbrl_algos.models.loggers import MyLogger, Logger, log_losses, log_reward_losses
 from bbrl.utils.chrono import Chrono
 
 # The workspace is the main class in BBRL, this is where all data is collected and stored
@@ -136,9 +136,7 @@ def compute_clip_policy_loss(cfg, advantage, ratio):
     return policy_loss
 
 
-def run_ppo_clip(cfg):
-    # 1)  Build the  logger
-    logger = Logger(cfg)
+def run_ppo_clip(trial, cfg, logger):
     best_reward = float("-inf")
     nb_steps = 0
     tmp_steps = 0
@@ -294,7 +292,7 @@ def run_ppo_clip(cfg):
             loss_entropy = -cfg.algorithm.entropy_coef * entropy_loss
 
             # Store the losses for tensorboard display
-            logger.log_losses(critic_loss, entropy_loss, policy_loss, nb_steps)
+            log_losses(logger, critic_loss, entropy_loss, policy_loss, nb_steps)
             logger.add_log("advantage", policy_advantage.mean(), nb_steps)
 
             loss = loss_policy + loss_entropy
@@ -322,7 +320,7 @@ def run_ppo_clip(cfg):
             )
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
-            logger.log_reward_losses(rewards, nb_steps)
+            log_reward_losses(logger, rewards, nb_steps)
             print(f"nb_steps: {nb_steps}, reward: {mean:.3f}, best_reward: {best_reward:.3f}")
             if mean > best_reward:
                 best_reward = mean
@@ -370,7 +368,9 @@ def main(cfg: DictConfig):
     # print(OmegaConf.to_yaml(cfg))
     torch.manual_seed(cfg.algorithm.seed)
     chrono = Chrono()
-    run_ppo_clip(cfg)
+    # 1)  Build the  logger
+    logger = Logger(cfg)
+    run_ppo_clip(None, cfg, logger)
     chrono.stop()
 
 

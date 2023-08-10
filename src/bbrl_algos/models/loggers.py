@@ -2,6 +2,17 @@ import torch
 import numpy as np
 from bbrl import instantiate_class, get_arguments, get_class
 
+def log_reward_losses(logger, rewards, nb_steps):
+        logger.add_log("reward/mean", rewards.mean(), nb_steps)
+        logger.add_log("reward/max", rewards.max(), nb_steps)
+        logger.add_log("reward/min", rewards.min(), nb_steps)
+        logger.add_log("reward/median", rewards.median(), nb_steps)
+
+def log_losses(logger, critic_loss, entropy_loss, actor_loss, steps):
+        logger.add_log("critic_loss", critic_loss, steps)
+        logger.add_log("entropy_loss", entropy_loss, steps)
+        logger.add_log("actor_loss", actor_loss, steps)
+
 
 class Logger:
     def __init__(self, cfg):
