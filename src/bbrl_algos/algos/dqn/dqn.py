@@ -315,7 +315,8 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 
 
 # %%
-@hydra.main(config_path=".", config_name="config.yaml") # , version_base="1.3")
+@hydra.main(config_path="./configs/", 
+            config_name="cartpole_optuna_wb.yaml") # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
