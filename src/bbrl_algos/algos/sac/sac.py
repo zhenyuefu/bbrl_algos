@@ -15,17 +15,17 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent
 
-from bbrl_examples.models.loggers import Logger
+from bbrl_algos.models.loggers import MyLogger, Logger
 from bbrl.utils.replay_buffer import ReplayBuffer
 
-from bbrl_examples.models.stochastic_actors import (
+from bbrl_algos.models.stochastic_actors import (
     SquashedGaussianActor,
     TunableVarianceContinuousActor,
     DiscreteActor,
 )
-from bbrl_examples.models.critics import ContinuousQAgent
-from bbrl_examples.models.shared_models import soft_update_params
-from bbrl_examples.models.envs import create_env_agents
+from bbrl_algos.models.critics import ContinuousQAgent
+from bbrl_algos.models.shared_models import soft_update_params
+from bbrl_algos.models.envs import create_env_agents
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic

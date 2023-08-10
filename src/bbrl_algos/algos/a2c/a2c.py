@@ -16,15 +16,14 @@ import hydra
 import torch
 import torch.nn as nn
 
-from bbrl_examples.models.stochastic_actors import TunableVarianceContinuousActor
-from bbrl_examples.models.stochastic_actors import SquashedGaussianActor
-from bbrl_examples.models.stochastic_actors import StateDependentVarianceContinuousActor
-from bbrl_examples.models.stochastic_actors import ConstantVarianceContinuousActor
-from bbrl_examples.models.stochastic_actors import DiscreteActor, BernoulliActor
+from bbrl_algos.models.stochastic_actors import TunableVarianceContinuousActor
+from bbrl_algos.models.stochastic_actors import SquashedGaussianActor
+from bbrl_algos.models.stochastic_actors import StateDependentVarianceContinuousActor
+from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
+from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 
-from bbrl_examples.models.critics import VAgent
-from bbrl.agents.gymb import AutoResetGymAgent, NoAutoResetGymAgent
-from bbrl_examples.models.loggers import Logger
+from bbrl_algos.models.critics import VAgent
+from bbrl_algos.models.loggers import MyLogger, Logger
 from bbrl.utils.chrono import Chrono
 
 from bbrl.visu.plot_policies import plot_policy

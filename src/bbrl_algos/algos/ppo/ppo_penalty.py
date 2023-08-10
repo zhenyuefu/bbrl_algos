@@ -24,7 +24,7 @@ from bbrl import get_arguments, get_class
 
 from bbrl.utils.functional import gae
 
-from bbrl_examples.models.loggers import Logger
+from bbrl_algos.models.loggers import MyLogger, Logger
 from bbrl.utils.chrono import Chrono
 
 # The workspace is the main class in BBRL, this is where all data is collected and stored
@@ -40,10 +40,10 @@ from bbrl.agents import Agents, TemporalAgent
 # ’env/env_obs’, ’env/reward’, ’env/timestep’, ’env/done’, ’env/initial_state’, ’env/cumulated_reward’,
 # ... When called at timestep t=0, then the environments are automatically reset.
 # At timestep t>0, these agents will read the ’action’ variable in the workspace at time t − 1
-from bbrl_examples.models.envs import get_env_agents
+from bbrl_algos.models.envs import get_env_agents
 
 # Neural network models for policys and critics
-from bbrl_examples.models.stochastic_actors import (
+from bbrl_algos.models.stochastic_actors import (
     TunableVariancePPOActor,
     TunableVarianceContinuousActor,
     TunableVarianceContinuousActorExp,
@@ -53,11 +53,11 @@ from bbrl_examples.models.stochastic_actors import (
     DiscreteActor,
     BernoulliActor,
 )
-from bbrl_examples.models.critics import VAgent
+from bbrl_algos.models.critics import VAgent
 
 # The KLAgent is specific to the KL regularization version of PPO
 # It is used to compute the KL divergence between the current and the past policy
-from bbrl_examples.models.exploration_agents import KLAgent
+from bbrl_algos.models.exploration_agents import KLAgent
 
 # Allow to display a policy and a critic as a 2D map
 from bbrl.visu.plot_policies import plot_policy

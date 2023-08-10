@@ -14,14 +14,14 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent, PrintAgent
 
-from bbrl_examples.models.loggers import Logger
+from bbrl_algos.models.loggers import MyLogger, Logger
 from bbrl.utils.replay_buffer import ReplayBuffer
 
-from bbrl_examples.models.actors import SquashedGaussianActor
-from bbrl_examples.models.critics import TruncatedQuantileNetwork
+from bbrl_algos.models.actors import SquashedGaussianActor
+from bbrl_algos.models.critics import TruncatedQuantileNetwork
 
-from bbrl_examples.models.shared_models import soft_update_params
-from bbrl_examples.models.envs import create_env_agents
+from bbrl_algos.models.shared_models import soft_update_params
+from bbrl_algos.models.envs import get_env_agents
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -189,7 +189,7 @@ def run_tqc(cfg):
     ent_coef = cfg.algorithm.entropy_coef
 
     # 2) Create the environment agent
-    train_env_agent, eval_env_agent = create_env_agents(cfg)
+    train_env_agent, eval_env_agent = get_env_agents(cfg)
 
     # 3) Create the A2C Agent
     (train_agent, eval_agent, actor, critic, target_critic) = create_tqc_agent(
