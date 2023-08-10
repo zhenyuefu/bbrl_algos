@@ -1,5 +1,6 @@
+import torch
 import numpy as np
-from bbrl import instantiate_class
+from bbrl import instantiate_class, get_arguments, get_class
 
 
 class Logger:
@@ -59,3 +60,20 @@ class RewardLoader:
         with open(self.rewards_filename, "rb") as f:
             rewards = np.load(f, allow_pickle=True)
         return steps, rewards
+    
+
+# %%
+class MyLogger:
+    def __init__(self, cfg):
+        logger_cfg = cfg.logger
+        logger_args = get_arguments(logger_cfg)
+        self.logger = get_class(logger_cfg)(**logger_args)
+        self.logger.save_hps(cfg)
+
+    def add_log(self, log_string, log_item, epoch) -> None:
+        if isinstance(log_item, torch.Tensor) and log_item.dim() == 0:
+            log_item = log_item.item()
+        self.logger.add_scalar(log_string, log_item, epoch)
+
+    def close(self, exit_code=0) -> None:
+        self.logger.close(exit_code)

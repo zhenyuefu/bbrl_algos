@@ -16,14 +16,13 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent, PrintAgent
 
-from bbrl_examples.models.loggers import Logger, RewardLogger
+from bbrl_algos.models.loggers import MyLogger, Logger, RewardLogger
 from bbrl.utils.replay_buffer import ReplayBuffer
 
-from bbrl_examples.models.actors import ContinuousDeterministicActor
-from bbrl_examples.models.critics import ContinuousQAgent
-from bbrl_examples.models.shared_models import soft_update_params
-from bbrl.agents.gymb import AutoResetGymAgent, NoAutoResetGymAgent
-from bbrl_examples.models.exploration_agents import AddGaussianNoise
+from bbrl_algos.models.actors import ContinuousDeterministicActor
+from bbrl_algos.models.critics import ContinuousQAgent
+from bbrl_algos.models.shared_models import soft_update_params
+from bbrl_algos.models.exploration_agents import AddGaussianNoise
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic

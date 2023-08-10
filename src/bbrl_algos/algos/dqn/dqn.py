@@ -30,6 +30,7 @@ from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 from bbrl_algos.models.critics import DiscreteQAgent
+from bbrl_algos.models.loggers import MyLogger
 
 # %%
 def compute_critic_loss(
@@ -76,23 +77,6 @@ def make_env(
     for wrapper in wrappers:
         env = wrapper(env)
     return env
-
-
-# %%
-class MyLogger:
-    def __init__(self, cfg):
-        logger_cfg = cfg.logger
-        logger_args = get_arguments(logger_cfg)
-        self.logger = get_class(logger_cfg)(**logger_args)
-        self.logger.save_hps(cfg)
-
-    def add_log(self, log_string, log_item, epoch) -> None:
-        if isinstance(log_item, torch.Tensor) and log_item.dim() == 0:
-            log_item = log_item.item()
-        self.logger.add_scalar(log_string, log_item, epoch)
-
-    def close(self, exit_code=0) -> None:
-        self.logger.close(exit_code)
 
 
 # %%

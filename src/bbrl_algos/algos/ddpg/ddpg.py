@@ -16,16 +16,15 @@ from bbrl.agents import Agents, TemporalAgent
 from bbrl.utils.replay_buffer import ReplayBuffer
 from bbrl.utils.chrono import Chrono
 
+from bbrl_algos.models.loggers import MyLogger, Logger, RewardLogger
+
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
 
-from bbrl_examples.models.actors import ContinuousDeterministicActor
-from bbrl_examples.models.critics import ContinuousQAgent
-from bbrl.agents.gymb import AutoResetGymAgent, NoAutoResetGymAgent
-from bbrl_examples.models.loggers import Logger, RewardLogger
-from bbrl_examples.models.plotters import Plotter
-from bbrl_examples.models.exploration_agents import AddGaussianNoise
-from bbrl_examples.algos.td3.td3 import run_td3
+from bbrl_algos.models.actors import ContinuousDeterministicActor
+from bbrl_algos.models.critics import ContinuousQAgent
+from bbrl_algos.models.plotters import Plotter
+from bbrl_algos.models.exploration_agents import AddGaussianNoise
 
 # HYDRA_FULL_ERROR = 1
 import matplotlib
