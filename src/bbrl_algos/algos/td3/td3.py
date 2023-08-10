@@ -8,6 +8,7 @@ import torch.nn as nn
 import gym
 import bbrl_gymnasium
 import hydra
+import optuna
 
 from omegaconf import DictConfig
 from bbrl.utils.chrono import Chrono
@@ -38,6 +39,7 @@ matplotlib.use("TkAgg")
 # Create the TD3 Agent
 def create_td3_agent(cfg, train_env_agent, eval_env_agent):
     obs_size, act_size = train_env_agent.get_obs_and_actions_sizes()
+    print(obs_size, act_size)
     actor = ContinuousDeterministicActor(
         obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size
     )
@@ -311,11 +313,11 @@ def main_loop(cfg):
 
 @hydra.main(
     config_path="./configs/",
-    config_name="td3_swimmer.yaml",
+    # config_name="td3_swimmer.yaml",
     # config_name="td3_cartpolecontinuous.yaml",
     # config_name="td3_lunar_lander_continuous.yaml",
-    # config_name="td3_pendulum.yaml",
-    version_base="1.1",
+    config_name="td3_pendulum.yaml",
+    # version_base="1.1",
 )
 def main(cfg: DictConfig):
     # print(OmegaConf.to_yaml(cfg))
