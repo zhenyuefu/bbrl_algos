@@ -107,7 +107,7 @@ def compute_actor_loss(q_values):
     return actor_loss.mean()
 
 
-def run_td3(cfg, reward_logger):
+def run_td3(trial, cfg, reward_logger):
     # 1)  Build the  logger
     logger = Logger(cfg)
     best_reward = float('-inf')

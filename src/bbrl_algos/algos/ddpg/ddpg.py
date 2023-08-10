@@ -98,7 +98,7 @@ def compute_actor_loss(q_values):
     return -q_values.mean()
 
 
-def run_ddpg(cfg, reward_logger):
+def run_ddpg(trial, cfg, reward_logger):
     # 1)  Build the  logger
     logger = Logger(cfg)
     best_reward = float('-inf')
