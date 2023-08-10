@@ -333,3 +333,48 @@ def main(cfg: DictConfig):
 if __name__ == "__main__":
     sys.path.append(os.getcwd())
     main()
+
+
+
+# %%
+def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
+    # code suivant assez moche, certes, piste d’amélioration possible
+    suggest_type = cfg['suggest_type']
+    args = cfg.keys() - ['suggest_type']
+    args_str = ', '.join([f'{arg}={cfg[arg]}' for arg in args])
+    return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
+
+
+def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
+    for variable_name in cfg.keys():
+        if type(cfg[variable_name]) != DictConfig:
+            continue
+        else:
+            if 'suggest_type' in cfg[variable_name].keys():
+                cfg[variable_name] = get_trial_value(trial, cfg[variable_name], variable_name)
+            else:
+                cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
+    return cfg
+
+
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
+
+    def objective(trial):
+
+        cfg_sampled = get_trial_config(trial, cfg_raw.copy())
+
+        logger = MyLogger(cfg_sampled)
+        try:
+            trial_result: float = run_td3(trial, cfg_sampled, logger)
+            logger.close()
+            return trial_result
+        except optuna.exceptions.TrialPruned as e:
+            logger.close(exit_code=1)
+
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective, n_trials=100)
+
+
+if __name__ == "__main__":
+    main()

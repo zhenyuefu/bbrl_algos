@@ -306,7 +306,7 @@ def main_loop(cfg):
     config_path="./configs/",
     # config_name="ddpg_pendulum.yaml",
     config_name="ddpg_lunar_lander_continuous.yaml",
-    version_base="1.1",
+    # version_base="1.1",
 )
 def main(cfg: DictConfig):
     # print(OmegaConf.to_yaml(cfg))
