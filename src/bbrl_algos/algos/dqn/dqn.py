@@ -107,16 +107,18 @@ def build_mlp(sizes, activation, output_activation=nn.Identity()):
 
 # %%
 def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
-    obs_space = train_env_agent.get_observation_space()
-    obs_shape = obs_space.shape if len(obs_space.shape) > 0 else obs_space.n
+    # obs_space = train_env_agent.get_observation_space()
+    # obs_shape = obs_space.shape if len(obs_space.shape) > 0 else obs_space.n
 
-    act_space = train_env_agent.get_action_space()
-    act_shape = act_space.shape if len(act_space.shape) > 0 else act_space.n
+    # act_space = train_env_agent.get_action_space()
+    # act_shape = act_space.shape if len(act_space.shape) > 0 else act_space.n
+
+    state_dim, action_dim = train_env_agent.get_obs_and_actions_sizes()
 
     critic = DiscreteQAgent(
-        state_dim=obs_shape[0],
+        state_dim=state_dim,
         hidden_layers=list(cfg_algo.architecture.hidden_sizes),
-        action_dim=act_shape,
+        action_dim=action_dim,
         seed=cfg_algo.seed.q,
     )
     critic_target = copy.deepcopy(critic)
