@@ -27,8 +27,8 @@ from bbrl_examples.models.loggers import Logger
 from bbrl_examples.wrappers.env_wrappers import RocketLanderWrapper
 from bbrl.utils.chrono import Chrono
 
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 # HYDRA_FULL_ERROR = 1
 
@@ -91,7 +91,7 @@ def run_a2c(cfg, max_grad_norm=0.5):
     # 1)  Build the  logger
     chrono = Chrono()
     logger = Logger(cfg)
-    best_reward = -10e9
+    best_reward = float('-inf')
 
     # 2) Create the environment agent
     train_env_agent = AutoResetGymAgent(

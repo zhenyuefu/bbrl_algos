@@ -181,7 +181,7 @@ def run_dqn(trial, cfg, logger):
     optimizer = setup_optimizer(cfg.optimizer, q_agent)
 
     # 6) Define the steps counters
-    best_reward = -1e19
+    best_reward = float('-inf')
     nb_steps = 0
     tmp_steps_target_update = 0
     tmp_steps_eval = 0

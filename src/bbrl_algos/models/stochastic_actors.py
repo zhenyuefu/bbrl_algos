@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from bbrl_examples.models.actors import BaseActor
+from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 from torch.distributions.normal import Normal
 from torch.distributions import Bernoulli, Independent
@@ -17,7 +18,7 @@ from bbrl_examples.models.shared_models import (
 from bbrl.agents.agent import Agent
 
 
-class ActorAgent(Agent):
+class ActorAgent(TimeAgent, SeedableAgent, SerializableAgent):
     """Choose an action (either according to p(a_t|s_t) when stochastic is true,
     or with argmax if false.
     """
@@ -35,7 +36,7 @@ class ActorAgent(Agent):
         self.set(("action", t), action)
 
 
-class BernoulliActor(Agent):
+class BernoulliActor(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, state_dim, hidden_layers):
         super().__init__()
         layers = [state_dim] + list(hidden_layers) + [1]
@@ -69,7 +70,7 @@ class BernoulliActor(Agent):
         return act
 
 
-class ProbAgent(Agent):
+class ProbAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, state_dim, hidden_layers, n_action):
         super().__init__(name="prob_agent")
         self.model = build_mlp(
@@ -86,7 +87,7 @@ class ProbAgent(Agent):
         self.set(("entropy", t), entropy)
 
 
-class ActionAgent(Agent):
+class ActionAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self):
         super().__init__()
 

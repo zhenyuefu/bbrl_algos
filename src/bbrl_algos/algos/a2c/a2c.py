@@ -95,7 +95,7 @@ def run_a2c(cfg):
     # 1)  Build the  logger
     chrono = Chrono()
     logger = Logger(cfg)
-    best_reward = -10e9
+    best_reward = float('-inf')
 
     # 2) Create the environment agent
     train_env_agent = AutoResetGymAgent(

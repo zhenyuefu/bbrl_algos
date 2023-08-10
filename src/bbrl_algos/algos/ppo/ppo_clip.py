@@ -55,7 +55,7 @@ from bbrl_examples.models.stochastic_actors import (
 )
 from bbrl_examples.models.critics import VAgent
 
-# Allow to display a policy and a critic as a 2D map
+# Used to display a policy and a critic as a 2D map
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
 

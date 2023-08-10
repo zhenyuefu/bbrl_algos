@@ -8,9 +8,8 @@ from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 from bbrl.agents.agent import Agent
 
-RichAgent = TimeAgent, SeedableAgent, SerializableAgent
 
-class BaseActor(Agent, ABC):
+class BaseActor(TimeAgent, SeedableAgent, SerializableAgent, ABC):
     """Generic class to centralize copy_parameters"""
 
     def copy_parameters(self, other):

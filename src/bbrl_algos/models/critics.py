@@ -7,7 +7,7 @@ from bbrl_examples.models.shared_models import build_mlp, build_alt_mlp
 from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 
-class ContinuousQAgent(Agent):
+class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, state_dim, hidden_layers, action_dim):
         super().__init__()
         self.is_q_function = True
@@ -30,7 +30,7 @@ class ContinuousQAgent(Agent):
         return q_value
 
 
-class VAgent(Agent):
+class VAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, state_dim, hidden_layers):
         super().__init__()
         self.is_q_function = False
@@ -43,29 +43,6 @@ class VAgent(Agent):
         critic = self.model(observation).squeeze(-1)
         self.set(("v_value", t), critic)
 
-"""
-class DiscreteQAgent(RichAgent):
-    def __init__(
-            self,
-            state_dim,
-            hidden_layers,
-            action_dim,
-            *args,
-            **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        self.model = build_mlp(
-            [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
-        )
-
-    def forward(self, t: int, choose_action=True, **kwargs):
-        obs = self.get(("env/env_obs", t)).float()
-        q_values = self.model(obs)
-        self.set(("q_values", t), q_values)
-        if choose_action:
-            action = q_values.argmax(1)
-            self.set(("action", t), action)
-"""
 
 class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
     
@@ -78,17 +55,17 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.is_q_function = True
         self.model = build_alt_mlp(
             [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
         )
 
     def forward(self, t, choose_action=True, **kwargs):
         obs = self.get(("env/env_obs", t))
-        q_values = self.model(obs).squeeze(-1)
+        q_values = self.model(obs)
         self.set(("q_values", t), q_values)
+        # Sets the action
         if choose_action:
-            action = q_values.argmax(-1)
+            action = q_values.argmax(1)
             self.set(("action", t), action)
 
     def predict_action(self, obs, stochastic):
@@ -101,11 +78,11 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
         return action
 
     def predict_value(self, obs, action):
-        q_values = self.model(obs).squeeze(-1)
+        q_values = self.model(obs)
         return q_values[action[0].int()]
 
 
-class TruncatedQuantileNetwork(Agent):
+class TruncatedQuantileNetwork(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(self, state_dim, hidden_layers, n_nets, action_dim, n_quantiles):
         super().__init__()
         self.is_q_function = True

@@ -108,7 +108,7 @@ def compute_actor_loss(q_values):
 def run_td3(cfg, reward_logger):
     # 1)  Build the  logger
     logger = Logger(cfg)
-    best_reward = -10e9
+    best_reward = float('-inf')
     delta_list = []
 
     # 2) Create the environment agents

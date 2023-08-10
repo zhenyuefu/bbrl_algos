@@ -121,7 +121,7 @@ def compute_actor_loss(action_logprob, reward, must_bootstrap):
 
 def run_reinforce(cfg):
     logger = Logger(cfg)
-    best_reward = -10e10
+    best_reward = float('-inf')
 
     # 2) Create the environment agent
     env_agent = NoAutoResetGymAgent(

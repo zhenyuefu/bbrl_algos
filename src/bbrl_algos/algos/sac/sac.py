@@ -27,8 +27,8 @@ from bbrl_examples.models.critics import ContinuousQAgent
 from bbrl_examples.models.shared_models import soft_update_params
 from bbrl_examples.models.envs import create_env_agents
 
-from bbrl.visu.visu_policies import plot_policy
-from bbrl.visu.visu_critics import plot_critic
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 # HYDRA_FULL_ERROR = 1
 
@@ -177,7 +177,7 @@ def compute_actor_loss(ent_coef, action_logp, q_values):
 def run_sac(cfg):
     # 1)  Build the  logger
     logger = Logger(cfg)
-    best_reward = -10e9
+    best_reward = float('-inf')
     ent_coef = cfg.algorithm.entropy_coef
 
     # 2) Create the environment agent
