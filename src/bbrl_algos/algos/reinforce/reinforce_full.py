@@ -5,20 +5,21 @@ import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
+from bbrl.agents.gymnasium import make_env, GymAgent, ParallelGymAgent
+from functools import partial
 
 from bbrl import get_arguments, get_class, instantiate_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent, PrintAgent
 from bbrl.agents.agent import Agent
 
-from bbrl_examples.models.stochastic_actors import TunableVarianceContinuousActor
-from bbrl_examples.models.stochastic_actors import StateDependentVarianceContinuousActor
-from bbrl_examples.models.stochastic_actors import ConstantVarianceContinuousActor
-from bbrl_examples.models.stochastic_actors import DiscreteActor, BernoulliActor
-from bbrl_examples.models.critics import VAgent
-from bbrl.agents.gymb import NoAutoResetGymAgent
+from bbrl_algos.models.stochastic_actors import TunableVarianceContinuousActor
+from bbrl_algos.models.stochastic_actors import StateDependentVarianceContinuousActor
+from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
+from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
+from bbrl_algos.models.critics import VAgent
 from bbrl.utils.functionalb import gae
-from bbrl_examples.models.loggers import Logger
+from bbrl_algos.models.loggers import Logger
 from bbrl.utils.chrono import Chrono
 
 
@@ -124,12 +125,11 @@ def run_reinforce(cfg):
     best_reward = float('-inf')
 
     # 2) Create the environment agent
-    env_agent = NoAutoResetGymAgent(
-        get_class(cfg.gym_env),
-        get_arguments(cfg.gym_env),
+    env_agent = ParallelGymAgent(
+        partial(make_env, cfg.gym_env.env_name, autoreset=True),
         cfg.algorithm.n_envs,
-        cfg.algorithm.seed,
-    )
+        include_last_state=True,
+    ).seed(cfg.algorithm.seed)
 
     reinforce_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
 
