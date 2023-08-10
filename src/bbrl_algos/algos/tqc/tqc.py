@@ -61,7 +61,6 @@ def create_tqc_agent(cfg, train_env_agent, eval_env_agent):
 
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
-    train_agent.seed(cfg.algorithm.seed)
     return train_agent, eval_agent, actor, critic, target_critic
 
 

@@ -58,7 +58,6 @@ def create_sac_agent(cfg, train_env_agent, eval_env_agent):
     target_critic_2 = copy.deepcopy(critic_2)
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
-    train_agent.seed(cfg.algorithm.seed)
     return (
         train_agent,
         eval_agent,

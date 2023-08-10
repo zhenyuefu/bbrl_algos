@@ -39,7 +39,6 @@ matplotlib.use("TkAgg")
 # Create the TD3 Agent
 def create_td3_agent(cfg, train_env_agent, eval_env_agent):
     obs_size, act_size = train_env_agent.get_obs_and_actions_sizes()
-    print(obs_size, act_size)
     actor = ContinuousDeterministicActor(
         obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size
     )
@@ -59,7 +58,6 @@ def create_td3_agent(cfg, train_env_agent, eval_env_agent):
 
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
-    train_agent.seed(cfg.algorithm.seed)
     return (
         train_agent,
         eval_agent,
@@ -325,7 +323,7 @@ def main(cfg: DictConfig):
     logdir = "./plot/"
     reward_logger = RewardLogger(logdir + "td3.steps", logdir + "td3.rwd")
     torch.manual_seed(cfg.algorithm.seed)
-    run_td3(cfg, reward_logger)
+    run_td3(None, cfg, reward_logger)
     chrono.stop()
     # main_loop(cfg)
 
