@@ -16,7 +16,7 @@ import torch.nn as nn
 import gym
 import bbrl_gymnasium
 import hydra
-from tqdm.auto import tqdm
+# from tqdm.auto import tqdm
 
 from omegaconf import DictConfig
 
@@ -165,9 +165,7 @@ def run_ppo_penalty(cfg):
     optimizer = setup_optimizer(cfg, train_agent, critic_agent)
 
     # Training loop
-    pbar = tqdm(range(cfg.algorithm.max_epochs))
-
-    for epoch in pbar:
+    for epoch in (range(cfg.algorithm.max_epochs)):
         # Execute the training agent in the workspace
 
         # Handles continuation
@@ -320,36 +318,37 @@ def run_ppo_penalty(cfg):
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
             logger.log_reward_losses(rewards, nb_steps)
-            pbar.set_description(f"nb_steps: {nb_steps}, reward: {mean:.3f}")
-            if cfg.save_best and mean > best_reward:
+            print(f"nb_steps: {nb_steps}, reward: {mean:.3f}, best_reward: {best_reward:.3f}")
+            if mean > best_reward:
                 best_reward = mean
-                directory = f"./ppo_agent/{cfg.gym_env.env_name}/"
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                filename = (
-                    directory
-                    + cfg.gym_env.env_name
-                    + "#ppo_penalty#team#"
-                    + str(mean.item())
-                    + ".agt"
-                )
-                policy.save_model(filename)
-                if cfg.plot_agents:
-                    plot_policy(
-                        eval_agent.agent.agents[1],
-                        eval_env_agent,
-                        "./ppo_plots/",
-                        cfg.gym_env.env_name,
-                        best_reward,
-                        stochastic=False,
+                if cfg.save_best:
+                    directory = f"./ppo_agent/{cfg.gym_env.env_name}/"
+                    if not os.path.exists(directory):
+                        os.makedirs(directory)
+                    filename = (
+                        directory
+                        + cfg.gym_env.env_name
+                        + "#ppo_penalty#team#"
+                        + str(mean.item())
+                        + ".agt"
                     )
-                    plot_critic(
-                        critic_agent.agent,
-                        eval_env_agent,
-                        "./ppo_plots/",
-                        cfg.gym_env.env_name,
-                        best_reward,
-                    )
+                    policy.save_model(filename)
+                    if cfg.plot_agents:
+                        plot_policy(
+                            eval_agent.agent.agents[1],
+                            eval_env_agent,
+                            "./ppo_plots/",
+                            cfg.gym_env.env_name,
+                            best_reward,
+                            stochastic=False,
+                        )
+                        plot_critic(
+                            critic_agent.agent,
+                            eval_env_agent,
+                            "./ppo_plots/",
+                            cfg.gym_env.env_name,
+                            best_reward,
+                        )
 
 
 @hydra.main(
@@ -360,7 +359,7 @@ def run_ppo_penalty(cfg):
     # config_name="ppo_pendulum.yaml",
     config_name="ppo_cartpole.yaml",
     # config_name="ppo_cartpole_continuous.yaml",
-    version_base="1.1",
+    # version_base="1.1",
 )
 def main(cfg: DictConfig):
     # print(OmegaConf.to_yaml(cfg))

@@ -51,11 +51,11 @@ def create_sac_agent(cfg, train_env_agent, eval_env_agent):
     critic_1 = ContinuousQAgent(
         obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size, name="critic-1"
     )
-    target_critic_1 = copy.deepcopy(critic_1).with_name("target-critic-1")
+    target_critic_1 = copy.deepcopy(critic_1).set_name("target-critic-1")
     critic_2 = ContinuousQAgent(
         obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size, name="critic-2"
     )
-    target_critic_2 = copy.deepcopy(critic_2).with_name("target-critic-2")
+    target_critic_2 = copy.deepcopy(critic_2).set_name("target-critic-2")
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
     return (

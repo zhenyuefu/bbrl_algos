@@ -16,7 +16,7 @@ class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
         )
         self.name = name
 
-    def with_name(self, name: str):
+    def set_name(self, name: str):
         self.name = name
         return self
 
