@@ -44,18 +44,18 @@ def create_sac_agent(cfg, train_env_agent, eval_env_agent):
         train_env_agent.is_continuous_action()
     ), "SAC code dedicated to continuous actions"
     actor = SquashedGaussianActor(
-        obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size
+        obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size, name="policy"
     )
     tr_agent = Agents(train_env_agent, actor)
     ev_agent = Agents(eval_env_agent, actor)
     critic_1 = ContinuousQAgent(
-        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
+        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size, name="critic-1"
     )
-    target_critic_1 = copy.deepcopy(critic_1)
+    target_critic_1 = copy.deepcopy(critic_1).with_name("target-critic-1")
     critic_2 = ContinuousQAgent(
-        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
+        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size, name="critic-2"
     )
-    target_critic_2 = copy.deepcopy(critic_2)
+    target_critic_2 = copy.deepcopy(critic_2).with_name("target-critic-2")
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
     return (
@@ -138,7 +138,7 @@ def compute_critic_loss(
         # Replay the current actor on the replay buffer to get actions of the
         # current actor
         t_actor(rb_workspace, t=1, n_steps=1, stochastic=True)
-        action_logprobs_next = rb_workspace["action_logprobs"]
+        action_logprobs_next = rb_workspace["policy/action_logprobs"]
 
         # Compute target q_values from both target critics: at t+1, we have
         # Q(s+1,a+1) from the (s+1,a+1) where a+1 has been replaced in the RB
@@ -181,7 +181,7 @@ def compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace):
 
     # [[student]] Recompute the action with the current actor (at $a_t$)
     t_actor(rb_workspace, t=0, n_steps=1, stochastic=True)
-    action_logprobs_new = rb_workspace["action_logprobs"]
+    action_logprobs_new = rb_workspace["policy/action_logprobs"]
     # [[/student]]
 
     # [[student]] Compute Q-values
@@ -319,7 +319,7 @@ def run_sac(trial, cfg, logger):
                 # log. probs have been computed when computing
                 # the actor loss
                 action_logprobs_rb = rb_workspace[
-                    "action_logprobs"
+                    "policy/action_logprobs"
                 ].detach()
                 entropy_coef_loss = -(
                     log_entropy_coef.exp() * (action_logprobs_rb + target_entropy)

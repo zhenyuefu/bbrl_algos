@@ -8,12 +8,17 @@ from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 
 class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, state_dim, hidden_layers, action_dim):
+    def __init__(self, state_dim, hidden_layers, action_dim, name="critic"):
         super().__init__()
         self.is_q_function = True
         self.model = build_mlp(
             [state_dim + action_dim] + list(hidden_layers) + [1], activation=nn.ReLU()
         )
+        self.name = name
+
+    def with_name(self, name: str):
+        self.name = name
+        return self
 
     def forward(self, t, detach_actions=False):
         obs = self.get(("env/env_obs", t))
@@ -22,7 +27,7 @@ class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
             action = action.detach()
         osb_act = torch.cat((obs, action), dim=1)
         q_value = self.model(osb_act)
-        self.set(("q_value", t), q_value)
+        self.set((f"{self.name}/q_value", t), q_value)
 
     def predict_value(self, obs, action):
         obs_act = torch.cat((obs, action), dim=0)
