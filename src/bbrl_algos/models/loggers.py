@@ -1,25 +1,17 @@
 import torch
 import numpy as np
-from bbrl import instantiate_class, get_arguments, get_class
-
-def log_reward_losses(logger, rewards, nb_steps):
-        logger.add_log("reward/mean", rewards.mean(), nb_steps)
-        logger.add_log("reward/max", rewards.max(), nb_steps)
-        logger.add_log("reward/min", rewards.min(), nb_steps)
-        logger.add_log("reward/median", rewards.median(), nb_steps)
-
-def log_losses(logger, critic_loss, entropy_loss, actor_loss, steps):
-        logger.add_log("critic_loss", critic_loss, steps)
-        logger.add_log("entropy_loss", entropy_loss, steps)
-        logger.add_log("actor_loss", actor_loss, steps)
+from bbrl import instantiate_class
 
 
 class Logger:
     def __init__(self, cfg):
         self.logger = instantiate_class(cfg.logger)
+        self.logger.save_hps(cfg)
 
-    def add_log(self, log_string, loss, steps):
-        self.logger.add_scalar(log_string, loss.item(), steps)
+    def add_log(self, log_string, log_item, steps):
+        if isinstance(log_item, torch.Tensor) and log_item.dim() == 0:
+            log_item = log_item.item()
+        self.logger.add_scalar(log_string, log_item, steps)
 
     # A specific function for RL algorithms having a critic, an actor and an entropy losses
     def log_losses(self, critic_loss, entropy_loss, actor_loss, steps):
@@ -32,6 +24,10 @@ class Logger:
         self.add_log("reward/max", rewards.max(), nb_steps)
         self.add_log("reward/min", rewards.min(), nb_steps)
         self.add_log("reward/median", rewards.median(), nb_steps)
+        self.add_log("reward/std", rewards.std(), nb_steps)
+
+    def close(self, exit_code=0) -> None:
+        self.logger.close(exit_code)
 
 
 class RewardLogger:
@@ -71,20 +67,3 @@ class RewardLoader:
         with open(self.rewards_filename, "rb") as f:
             rewards = np.load(f, allow_pickle=True)
         return steps, rewards
-    
-
-# %%
-class MyLogger:
-    def __init__(self, cfg):
-        logger_cfg = cfg.logger
-        logger_args = get_arguments(logger_cfg)
-        self.logger = get_class(logger_cfg)(**logger_args)
-        self.logger.save_hps(cfg)
-
-    def add_log(self, log_string, log_item, epoch) -> None:
-        if isinstance(log_item, torch.Tensor) and log_item.dim() == 0:
-            log_item = log_item.item()
-        self.logger.add_scalar(log_string, log_item, epoch)
-
-    def close(self, exit_code=0) -> None:
-        self.logger.close(exit_code)
