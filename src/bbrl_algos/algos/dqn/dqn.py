@@ -30,7 +30,8 @@ from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 from bbrl_algos.models.critics import DiscreteQAgent
-from bbrl_algos.models.loggers import MyLogger
+from bbrl_algos.models.loggers import Logger
+
 
 # %%
 def compute_critic_loss(
@@ -88,7 +89,6 @@ def build_mlp(sizes, activation, output_activation=nn.Identity()):
     return nn.Sequential(*layers)
 
 
-
 # %%
 def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     # obs_space = train_env_agent.get_observation_space()
@@ -107,7 +107,7 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     )
     critic_target = copy.deepcopy(critic)
 
-    explorer =  EGreedyActionSelector(
+    explorer = EGreedyActionSelector(
         name="action_selector",
         epsilon=cfg_algo.explorer.epsilon_start,
         epsilon_end=cfg_algo.explorer.epsilon_end,
@@ -137,7 +137,7 @@ def setup_optimizer(optimizer_cfg, q_agent):
 
 
 # %%
-def run_dqn(trial, cfg, logger):
+def run_dqn(cfg, logger, trial=None):
     # 1) Create the environment agent
     train_env_agent = ParallelGymAgent(
         make_env_fn=get_class(cfg.gym_env_train),
@@ -202,7 +202,7 @@ def run_dqn(trial, cfg, logger):
         steps_diff = cfg.algorithm.n_steps - nb_steps
         if transition_workspace.batch_size() > steps_diff:
             for key in transition_workspace.keys():
-                transition_workspace.set_full(key, transition_workspace[key][:,:steps_diff])
+                transition_workspace.set_full(key, transition_workspace[key][:, :steps_diff])
 
         nb_steps += transition_workspace.batch_size()
 
@@ -240,6 +240,7 @@ def run_dqn(trial, cfg, logger):
             logger.add_log("replay_buffer_size", replay_buffer.size(), nb_steps)
 
             if replay_buffer.size() > cfg.algorithm.buffer.learning_starts:
+
                 # Compute critic loss
                 critic_loss = compute_critic_loss(
                     cfg.algorithm.discount_factor,
@@ -250,7 +251,7 @@ def run_dqn(trial, cfg, logger):
                     q_target,
                 )
 
-                # Store the loss for tensorboard display
+                # Store the loss
                 logger.add_log("critic_loss", critic_loss, nb_steps)
 
                 optimizer.zero_grad()
@@ -280,17 +281,15 @@ def run_dqn(trial, cfg, logger):
             )
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean, std = rewards.mean(), rewards.std()
-            if mean > best_reward:
-                best_reward = mean
-            logger.add_log("reward", mean, nb_steps)
-            stats_string = (
-                "nb_steps: {}, mean reward: {:.2f}, std: {:.2f}".format(
-                    nb_steps, mean, std
-                )
-            )
-            print(stats_string)
 
-    return best_reward
+            logger.log_reward_losses(rewards, nb_steps)
+
+            if trial is not None:
+                trial.report(mean, nb_steps)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+
+    return mean
 
 
 # %%
@@ -315,25 +314,30 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 
 
 # %%
-@hydra.main(config_path="./configs/", 
-            config_name="cartpole_optuna_wb.yaml") # , version_base="1.3")
+@hydra.main(config_path="configs/", config_name="cartpole_wandb_optuna.yaml")  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
-    def objective(trial):
+    if "optuna" in cfg_raw:
+        cfg_optuna = cfg_raw.optuna
 
-        cfg_sampled = get_trial_config(trial, cfg_raw.copy())
+        def objective(trial):
+            cfg_sampled = get_trial_config(trial, cfg_raw.copy())
 
-        logger = MyLogger(cfg_sampled)
-        try:
-            trial_result: float = run_dqn(trial, cfg_sampled, logger)
-            logger.close()
-            return trial_result
-        except optuna.exceptions.TrialPruned as e:
-            logger.close(exit_code=1)
+            logger = Logger(cfg_sampled)
+            try:
+                trial_result: float = run_dqn(cfg_sampled, logger, trial)
+                logger.close()
+                return trial_result
+            except optuna.exceptions.TrialPruned as e:
+                logger.close(exit_code=1)
 
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=100)
+        study = optuna.create_study(**cfg_optuna.study)
+        study.optimize(func=objective, **cfg_optuna.optimize)
+
+    else:
+        logger = Logger(cfg_raw)
+        run_dqn(cfg_raw, logger)
 
 
 if __name__ == "__main__":

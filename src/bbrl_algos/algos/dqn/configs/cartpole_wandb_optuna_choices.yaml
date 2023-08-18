@@ -8,6 +8,7 @@ hydra:
   run:
     dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
+# The following arguments have to be adapted if using another logger (e.g. TfLogger)
 logger:
   classname: bbrl.utils.logger.WandbLogger
   project: "dqn_vec"
@@ -54,33 +55,38 @@ algorithm:
 
   buffer:
     max_size:
-      suggest_type: int
-      low: 5000
-      high: 50000
+      suggest_type: choices
+        - 5000
+        - 10_000
+        - 60_0000
     batch_size: 256
     learning_starts:
-        suggest_type: int
-        low: 100
-        high: 1000
+        suggest_type: choices
+          - 1_000
+          - 5_000
 
   target_critic_update_interval: 10
   max_grad_norm:
-    suggest_type: float
-    low: 0.5
-    high: 5.0
+    suggest_type: choices
+      - 0.5
+      - 1.0
+      - 2.0
 
   n_envs_eval: 10
   n_envs_train: 5
   n_steps_train: 50
 
   optim_n_updates:
-    suggest_type: int
-    low: 1
-    high: 10
+    suggest_type: choices
+      - 1
+      - 3
+      - 4
+      - 6
   discount_factor:
-    suggest_type: int
-    low: 0.9
-    high: 0.999
+    suggest_type: choices
+      - 0.9
+      - 0.99
+      - 0.999
 
   n_steps: 70_000
   eval_interval: 1000
