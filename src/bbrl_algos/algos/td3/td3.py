@@ -105,11 +105,11 @@ def compute_actor_loss(q_values):
     return actor_loss.mean()
 
 
-def run_td3(cfg, reward_logger, trial=None):
+def run_td3(cfg, logger, trial=None):
     # 1)  Build the  logger
-    logger = Logger(cfg)
     best_reward = float("-inf")
     delta_list = []
+    mean = 0
 
     # 2) Create the environment agents
     train_env_agent, eval_env_agent = get_env_agents(cfg)
@@ -157,7 +157,7 @@ def run_td3(cfg, reward_logger, trial=None):
             rb.put(transition_workspace)
             # rb.print_obs()
 
-        for _ in range(cfg.algorithm.n_updates):
+        for _ in range(cfg.algorithm.optim_n_updates):
 
             # print(f"done {done}, reward {reward}, action {action}")
             if nb_steps > cfg.algorithm.learning_starts:
@@ -256,7 +256,6 @@ def run_td3(cfg, reward_logger, trial=None):
             mean = rewards[-1].mean()
             logger.log_reward_losses(rewards[-1], nb_steps)
             print(f"nb_steps: {nb_steps}, reward: {mean}")
-            reward_logger.add(nb_steps, mean)
 
             if trial is not None:
                 trial.report(mean, nb_steps)
@@ -293,7 +292,6 @@ def run_td3(cfg, reward_logger, trial=None):
                         cfg.gym_env.env_name,
                         nb_steps,
                     )
-
     return mean
 
 

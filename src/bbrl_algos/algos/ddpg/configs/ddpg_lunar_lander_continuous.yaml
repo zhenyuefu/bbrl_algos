@@ -33,7 +33,7 @@
       buffer_size: 2e5
       n_envs: 8
       n_steps: 32
-      n_updates: 1
+      optim_n_updates: 1
       batch_size: 64
       tau_target: 0.05
       eval_interval: 3000

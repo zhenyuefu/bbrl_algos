@@ -30,6 +30,7 @@
 
       nb_seeds: 1
       max_grad_norm: 0.5
+      optim_n_updates: 3
       n_envs: 1
       n_steps: 100
       buffer_size: 2e5

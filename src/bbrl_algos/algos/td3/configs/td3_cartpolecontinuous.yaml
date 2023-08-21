@@ -28,12 +28,12 @@
         act: 2
         explorer: 4
         torch: 7
-        
+
       n_envs: 1
       n_steps: 1
       buffer_size: 10e6
       tau_target: 0.005
-      n_updates: 1
+      optim_n_updates: 1
       eval_interval: 2500
       learning_starts: 10000
       nb_evals: 1

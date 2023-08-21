@@ -103,11 +103,11 @@ def compute_actor_loss(q_values):
     return -q_values.mean()
 
 
-def run_ddpg(cfg, reward_logger, trial=None):
+def run_ddpg(cfg, logger, trial=None):
     # 1)  Build the  logger
-    logger = Logger(cfg)
     best_reward = float("-inf")
     delta_list = []
+    mean = 0
 
     # 2) Create the environment agent
     train_env_agent, eval_env_agent = get_env_agents(cfg)
@@ -149,7 +149,7 @@ def run_ddpg(cfg, reward_logger, trial=None):
         nb_steps += action[0].shape[0]
         rb.put(transition_workspace)
 
-        for _ in range(cfg.algorithm.n_updates):
+        for _ in range(cfg.algorithm.optim_n_updates):
             rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
 
             done, truncated, reward, action = rb_workspace[
@@ -224,7 +224,6 @@ def run_ddpg(cfg, reward_logger, trial=None):
             mean = rewards[-1].mean()
             logger.add_log("reward", mean, nb_steps)
             print(f"nb_steps: {nb_steps}, reward: {mean}")
-            reward_logger.add(nb_steps, mean)
 
             if trial is not None:
                 trial.report(mean, nb_steps)
