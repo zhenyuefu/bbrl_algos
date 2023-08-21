@@ -8,6 +8,15 @@ hydra:
   run:
     dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
+optuna:
+  study:
+    study_name: dqn_vec
+    direction: maximize
+  optimize:
+    n_trials: 10
+    timeout: 600
+    n_jobs: 1
+
 # The following arguments have to be adapted if using another logger (e.g. TfLogger)
 logger:
   classname: bbrl.utils.logger.WandbLogger
@@ -55,19 +64,22 @@ algorithm:
 
   buffer:
     max_size:
-      suggest_type: choices
+      suggest_type: categorical
+      choices:
         - 5000
         - 10_000
         - 60_0000
     batch_size: 256
     learning_starts:
-        suggest_type: choices
+        suggest_type: categorical
+        choices:
           - 1_000
           - 5_000
 
   target_critic_update_interval: 10
   max_grad_norm:
-    suggest_type: choices
+    suggest_type: categorical
+    choices:
       - 0.5
       - 1.0
       - 2.0
@@ -77,13 +89,15 @@ algorithm:
   n_steps_train: 50
 
   optim_n_updates:
-    suggest_type: choices
+    suggest_type: categorical
+    choices:
       - 1
       - 3
       - 4
       - 6
   discount_factor:
-    suggest_type: choices
+    suggest_type: categorical
+    choices:
       - 0.9
       - 0.99
       - 0.999
