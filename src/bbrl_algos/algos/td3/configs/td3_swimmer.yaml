@@ -1,11 +1,23 @@
     save_best: True
     plot_agents: False
 
+    log_dir: ./tmp
+    video_dir: ${log_dir}/videos
+
+    hydra:
+      run:
+        dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
     logger:
-      classname: bbrl.utils.logger.TFLogger
-      log_dir: ./td3_logs/
-      verbose: False
+      classname: bbrl.utils.logger.WandbLogger
+      project: "td3_study"
+      group: "tune_td3"
+      tags: "hp_td3"
+      job_type: test
+      log_dir: ${log_dir}
+      cache_size: 10000
       every_n_seconds: 10
+      verbose: False
 
     algorithm:
       seed: 1

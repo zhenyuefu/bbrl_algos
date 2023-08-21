@@ -166,8 +166,8 @@ class DiscreteActor(BaseActor):
 
 
 class StochasticActor(BaseActor):
-    def __init__(self, name="policy"):
-        super().__init__()
+    def __init__(self, name="policy", *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.set_name(name)
 
     def set_name(self, name):
@@ -207,8 +207,8 @@ class StochasticActor(BaseActor):
 
 
 class TunableVarianceContinuousActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy"):
-        super().__init__(name)
+    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(layers, activation=nn.ReLU())
         init_variance = torch.randn(action_dim, 1).transpose(0, 1)
@@ -227,8 +227,8 @@ class TunableVarianceContinuousActorExp(StochasticActor):
     we exponentiate it
     """
 
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy"):
-        super().__init__(name)
+    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(layers, activation=nn.Tanh())
         self.std_param = nn.parameter.Parameter(torch.randn(1, action_dim))
@@ -240,8 +240,8 @@ class TunableVarianceContinuousActorExp(StochasticActor):
 
 
 class StateDependentVarianceContinuousActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy"):
-        super().__init__(name)
+    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
         backbone_dim = [state_dim] + list(hidden_layers)
         self.layers = build_backbone(backbone_dim, activation=nn.Tanh())
         self.backbone = nn.Sequential(*self.layers)
@@ -258,8 +258,8 @@ class StateDependentVarianceContinuousActor(StochasticActor):
 
 
 class ConstantVarianceContinuousActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy"):
-        super().__init__(name)
+    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(layers, activation=nn.Tanh())
         self.std_param = 2
@@ -270,8 +270,8 @@ class ConstantVarianceContinuousActor(StochasticActor):
 
 
 class SquashedGaussianActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy"):
-        super().__init__(name)
+    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
         backbone_dim = [state_dim] + list(hidden_layers)
         self.layers = build_backbone(backbone_dim, activation=nn.Tanh())
         self.backbone = nn.Sequential(*self.layers)
@@ -298,8 +298,8 @@ class TunableVariancePPOActor(StochasticActor):
     The official PPO actor uses Tanh activation functions and orthogonal initialization
     """
 
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy"):
-        super().__init__(name)
+    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_ortho_mlp(layers, activation=nn.Tanh())
         init_variance = torch.randn(1, action_dim)

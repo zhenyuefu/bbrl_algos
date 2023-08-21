@@ -11,6 +11,8 @@ from bbrl.agents.agent import Agent
 
 class BaseActor(TimeAgent, SeedableAgent, SerializableAgent, ABC):
     """Generic class to centralize copy_parameters"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def copy_parameters(self, other):
         """Copy parameters from other agent"""
@@ -21,8 +23,15 @@ class BaseActor(TimeAgent, SeedableAgent, SerializableAgent, ABC):
 class DiscreteDeterministicActor(BaseActor):
     """This actor is assumed to have one output per action, and we take the action with the highest output"""
 
-    def __init__(self, state_dim, hidden_size, n_actions):
-        super().__init__()
+    def __init__(
+            self, 
+            state_dim, 
+            hidden_size, 
+            n_actions,
+            *args,
+            **kwargs,
+            ):
+        super().__init__(*args, **kwargs)
         self.model = build_mlp(
             [state_dim] + list(hidden_size) + [n_actions], activation=nn.ReLU()
         )
@@ -47,8 +56,15 @@ class DiscreteDeterministicActor(BaseActor):
 class ContinuousDeterministicActor(BaseActor):
     """This actor outputs continuous actions"""
 
-    def __init__(self, state_dim, hidden_layers, action_dim):
-        super().__init__()
+    def __init__(
+            self, 
+            state_dim, 
+            hidden_layers, 
+            action_dim,
+            *args,
+            **kwargs,
+            ):
+        super().__init__(*args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(
             layers,

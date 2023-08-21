@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import gym
-import my_gym
+import bbrl_gymnasium
 import hydra
 import optuna
 
@@ -17,7 +17,7 @@ from bbrl.agents import Agents, TemporalAgent
 from bbrl.utils.replay_buffer import ReplayBuffer
 from bbrl.utils.chrono import Chrono
 
-from bbrl_algos.models.loggers import MyLogger, Logger, RewardLogger
+from bbrl_algos.models.loggers import Logger
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -44,11 +44,12 @@ def soft_update_params(net, target_net, tau):
 def create_ddpg_agent(cfg, train_env_agent, eval_env_agent):
     obs_size, act_size = train_env_agent.get_obs_and_actions_sizes()
     critic = ContinuousQAgent(
-        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
+        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size,
+        seed=cfg.algorithm.seed.q,
     )
     target_critic = copy.deepcopy(critic)
     actor = ContinuousDeterministicActor(
-        obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size
+        obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size,
     )
     # target_actor = copy.deepcopy(actor)
     noise_agent = AddGaussianNoise(cfg.algorithm.action_noise)
@@ -97,7 +98,7 @@ def compute_actor_loss(q_values):
     return -q_values.mean()
 
 
-def run_ddpg(trial, cfg, reward_logger):
+def run_ddpg(cfg, reward_logger, trial=None):
     # 1)  Build the  logger
     logger = Logger(cfg)
     best_reward = float('-inf')
@@ -129,16 +130,16 @@ def run_ddpg(trial, cfg, reward_logger):
     tmp_steps = 0
 
     # Training loop
-    for epoch in range(cfg.algorithm.max_epochs):
+    while nb_steps < cfg.algorithm.n_steps:
         # Execute the agent in the workspace
-        if epoch > 0:
+        if nb_steps > 0:
             train_workspace.zero_grad()
             train_workspace.copy_n_last_steps(1)
             train_agent(train_workspace, t=1, n_steps=cfg.algorithm.n_steps)
         else:
             train_agent(train_workspace, t=0, n_steps=cfg.algorithm.n_steps)
 
-        transition_workspace = train_workspace.get_transitions()
+        transition_workspace = train_workspace.get_transitions(filter_key="env/done")
         action = transition_workspace["action"]
         nb_steps += action[0].shape[0]
         rb.put(transition_workspace)
@@ -219,6 +220,12 @@ def run_ddpg(trial, cfg, reward_logger):
             logger.add_log("reward", mean, nb_steps)
             print(f"nb_steps: {nb_steps}, reward: {mean}")
             reward_logger.add(nb_steps, mean)
+
+            if trial is not None:
+                trial.report(mean, nb_steps)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+            
             if cfg.plot_agents:
                 # plot_policy(
                 #    actor,
@@ -248,69 +255,9 @@ def run_ddpg(trial, cfg, reward_logger):
                     + ".agt"
                 )
                 eval_agent.save_model(filename)
+    return mean
 
 
-def main_loop(cfg):
-    chrono = Chrono()
-    logdir = "./plot/"
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
-    reward_logger = RewardLogger(logdir + "ddpg.steps", logdir + "ddpg.rwd")
-    torch.manual_seed(cfg.algorithm.seed)
-    run_ddpg(None, cfg, reward_logger)
-    chrono.stop()
-    # The code below was designe to compute the difference between DDPG and TD3
-    # delta_list_mean_td3, delta_list_std_td3 = run_ddpg(cfg, reward_logger)
-
-    # l1 = delta_list_mean + delta_list_std
-    # l2 = delta_list_mean - delta_list_std
-
-    # l1_td3 = delta_list_mean_td3 + delta_list_std_td3
-    # l2_td3 = delta_list_mean_td3 - delta_list_std_td3
-
-    """
-    plt.figure()
-    plt.fill_between(
-        np.arange(0, len(delta_list_mean), 1),
-        l1,
-        l2,
-        facecolor="pink",
-        label="std reward",
-        alpha=0.5,
-    )
-    plt.fill_between(
-        np.arange(0, len(delta_list_mean_td3), 1),
-        l1_td3,
-        l2_td3,
-        facecolor="lightblue",
-        label="std reward",
-        alpha=0.5,
-    )
-    plt.plot(delta_list_mean, c="r", label="DDPG")
-    plt.plot(delta_list_mean_td3, c="b", label="TD3")
-    plt.title("LunarLander-v2 -delta")
-    plt.xlabel("episode")
-    plt.ylabel("delta")
-    plt.savefig("delta.pdf")
-    plt.legend()
-    plt.show()
-    """
-
-
-@hydra.main(
-    config_path="./configs/",
-    # config_name="ddpg_pendulum.yaml",
-    config_name="ddpg_lunar_lander_continuous.yaml",
-    # version_base="1.1",
-)
-def main(cfg: DictConfig):
-    # print(OmegaConf.to_yaml(cfg))
-    main_loop(cfg)
-
-
-if __name__ == "__main__":
-    sys.path.append(os.getcwd())
-    main()
 
 
 # %%
@@ -334,23 +281,33 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
     return cfg
 
 
+# %%
+@hydra.main(config_path="configs/", 
+            config_name="ddpg_cartpole.yaml"
+            )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
-    def objective(trial):
+    if "optuna" in cfg_raw:
+        cfg_optuna = cfg_raw.optuna
 
-        cfg_sampled = get_trial_config(trial, cfg_raw.copy())
+        def objective(trial):
+            cfg_sampled = get_trial_config(trial, cfg_raw.copy())
 
-        logger = MyLogger(cfg_sampled)
-        try:
-            trial_result: float = run_ddpg(trial, cfg_sampled, logger)
-            logger.close()
-            return trial_result
-        except optuna.exceptions.TrialPruned as e:
-            logger.close(exit_code=1)
+            logger = Logger(cfg_sampled)
+            try:
+                trial_result: float = run_ddpg(cfg_sampled, logger, trial)
+                logger.close()
+                return trial_result
+            except optuna.exceptions.TrialPruned as e:
+                logger.close(exit_code=1)
 
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=100)
+        study = optuna.create_study(**cfg_optuna.study)
+        study.optimize(func=objective, **cfg_optuna.optimize)
+
+    else:
+        logger = Logger(cfg_raw)
+        run_ddpg(cfg_raw, logger)
 
 
 if __name__ == "__main__":

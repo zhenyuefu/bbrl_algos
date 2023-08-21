@@ -17,7 +17,7 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent, PrintAgent
 
-from bbrl_algos.models.loggers import MyLogger, Logger, RewardLogger
+from bbrl_algos.models.loggers import Logger
 from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.actors import ContinuousDeterministicActor
@@ -105,7 +105,7 @@ def compute_actor_loss(q_values):
     return actor_loss.mean()
 
 
-def run_td3(trial, cfg, reward_logger):
+def run_td3(cfg, reward_logger, trial=None):
     # 1)  Build the  logger
     logger = Logger(cfg)
     best_reward = float('-inf')
@@ -257,6 +257,12 @@ def run_td3(trial, cfg, reward_logger):
             logger.log_reward_losses(rewards[-1], nb_steps)
             print(f"nb_steps: {nb_steps}, reward: {mean}")
             reward_logger.add(nb_steps, mean)
+
+            if trial is not None:
+                trial.report(mean, nb_steps)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+            
             if cfg.save_best and mean > best_reward:
                 best_reward = mean
                 directory = "./td3_agent/"
@@ -270,6 +276,7 @@ def run_td3(trial, cfg, reward_logger):
                         + ".agt"
                 )
                 eval_agent.save_model(filename)
+                
                 if cfg.plot_agents:
                     plot_policy(
                         actor,
@@ -286,51 +293,8 @@ def run_td3(trial, cfg, reward_logger):
                         cfg.gym_env.env_name,
                         nb_steps,
                     )
-    delta_list_mean = np.array(delta_list).mean(axis=1)
-    delta_list_std = np.array(delta_list).std(axis=1)
-    return delta_list_mean, delta_list_std
-
-
-def main_loop(cfg):
-    chrono = Chrono()
-    logdir = "./plot/"
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
-    reward_logger = RewardLogger(logdir + "td3.steps", logdir + "td3.rwd")
-    for seed in range(cfg.algorithm.nb_seeds):
-        cfg.algorithm.seed = seed
-        torch.manual_seed(cfg.algorithm.seed)
-        run_td3(cfg, reward_logger)
-        if seed < cfg.algorithm.nb_seeds - 1:
-            reward_logger.new_episode()
-    reward_logger.save()
-    chrono.stop()
-    # plotter = Plotter(logdir + "td3.steps", logdir + "td3.rwd")
-    # plotter.plot_reward("td3", cfg.gym_env.env_name)
-
-
-@hydra.main(
-    config_path="./configs/",
-    # config_name="td3_swimmer.yaml",
-    # config_name="td3_cartpolecontinuous.yaml",
-    # config_name="td3_lunar_lander_continuous.yaml",
-    config_name="td3_pendulum.yaml",
-    # version_base="1.1",
-)
-def main(cfg: DictConfig):
-    # print(OmegaConf.to_yaml(cfg))
-    chrono = Chrono()
-    logdir = "./plot/"
-    reward_logger = RewardLogger(logdir + "td3.steps", logdir + "td3.rwd")
-    torch.manual_seed(cfg.algorithm.seed)
-    run_td3(None, cfg, reward_logger)
-    chrono.stop()
-    # main_loop(cfg)
-
-
-if __name__ == "__main__":
-    sys.path.append(os.getcwd())
-    main()
+    
+    return mean
 
 
 
@@ -355,23 +319,33 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
     return cfg
 
 
+# %%
+@hydra.main(config_path="configs/", 
+            config_name="ddpg_cartpole.yaml"
+            )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
-    def objective(trial):
+    if "optuna" in cfg_raw:
+        cfg_optuna = cfg_raw.optuna
 
-        cfg_sampled = get_trial_config(trial, cfg_raw.copy())
+        def objective(trial):
+            cfg_sampled = get_trial_config(trial, cfg_raw.copy())
 
-        logger = MyLogger(cfg_sampled)
-        try:
-            trial_result: float = run_td3(trial, cfg_sampled, logger)
-            logger.close()
-            return trial_result
-        except optuna.exceptions.TrialPruned as e:
-            logger.close(exit_code=1)
+            logger = Logger(cfg_sampled)
+            try:
+                trial_result: float = run_td3(cfg_sampled, logger, trial)
+                logger.close()
+                return trial_result
+            except optuna.exceptions.TrialPruned as e:
+                logger.close(exit_code=1)
 
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=100)
+        study = optuna.create_study(**cfg_optuna.study)
+        study.optimize(func=objective, **cfg_optuna.optimize)
+
+    else:
+        logger = Logger(cfg_raw)
+        run_td3(cfg_raw, logger)
 
 
 if __name__ == "__main__":

@@ -8,8 +8,16 @@ from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 
 class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="critic"):
-        super().__init__()
+    def __init__(
+            self, 
+            state_dim, 
+            hidden_layers, 
+            action_dim, 
+            name="critic",
+            *args,
+            **kwargs,
+            ):
+        super().__init__(*args, **kwargs)
         self.is_q_function = True
         self.model = build_mlp(
             [state_dim + action_dim] + list(hidden_layers) + [1], activation=nn.ReLU()
@@ -36,8 +44,14 @@ class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class VAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, state_dim, hidden_layers):
-        super().__init__()
+    def __init__(
+            self, 
+            state_dim, 
+            hidden_layers,
+            *args,
+            **kwargs,
+            ):
+        super().__init__(*args, **kwargs)
         self.is_q_function = False
         self.model = build_mlp(
             [state_dim] + list(hidden_layers) + [1], activation=nn.ReLU()
@@ -88,8 +102,16 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class TruncatedQuantileNetwork(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, state_dim, hidden_layers, n_nets, action_dim, n_quantiles):
-        super().__init__()
+    def __init__(
+            self, 
+            state_dim, 
+            hidden_layers,
+            n_nets, action_dim,
+            n_quantiles,
+            *args,
+            **kwargs,
+            ):
+        super().__init__(*args, **kwargs)
         self.is_q_function = True
         self.nets = []
         for i in range(n_nets):

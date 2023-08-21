@@ -1,14 +1,33 @@
     save_best: True
     plot_agents: True
 
+    log_dir: ./tmp
+    video_dir: ${log_dir}/videos
+
+    hydra:
+      run:
+        dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
     logger:
-      classname: bbrl.utils.logger.TFLogger
-      log_dir: ./ddpg_logs/
-      verbose: False
+      classname: bbrl.utils.logger.WandbLogger
+      project: "ddpg_study"
+      group: "tune_ddpg"
+      tags: "hp_ddpg"
+      job_type: test
+      log_dir: ${log_dir}
+      cache_size: 10000
       every_n_seconds: 10
+      verbose: False
 
     algorithm:
-      seed: 1
+
+      seed:
+        train: 2
+        eval: 9
+        q: 1
+        explorer: 4
+        torch: 7
+
       nb_seeds: 1
       max_grad_norm: 0.5
       buffer_size: 2e5
