@@ -35,7 +35,7 @@ from bbrl_algos.models.loggers import Logger
 
 # %%
 def compute_critic_loss(
-        discount_factor, reward, must_bootstrap, action, q_values, q_target=None
+    discount_factor, reward, must_bootstrap, action, q_values, q_target=None
 ):
     """Compute critic loss
     Args:
@@ -60,16 +60,16 @@ def compute_critic_loss(
 
 # %%
 def make_wrappers(
-        autoreset: bool,
+    autoreset: bool,
 ) -> List[Callable[[Env], Env]]:
     return [AutoResetWrapper] if autoreset else []
 
 
 # %%
 def make_env(
-        identifier: str,
-        autoreset: bool,
-        **kwargs,
+    identifier: str,
+    autoreset: bool,
+    **kwargs,
 ) -> Env:
     env: Env = gym.make(id=identifier, **kwargs)
     wrappers = make_wrappers(
@@ -167,7 +167,6 @@ def run_dqn(cfg, logger, trial=None):
     optimizer = setup_optimizer(cfg.optimizer, q_agent)
 
     # 6) Define the steps counters
-    best_reward = float('-inf')
     nb_steps = 0
     tmp_steps_target_update = 0
     tmp_steps_eval = 0
@@ -202,7 +201,9 @@ def run_dqn(cfg, logger, trial=None):
         steps_diff = cfg.algorithm.n_steps - nb_steps
         if transition_workspace.batch_size() > steps_diff:
             for key in transition_workspace.keys():
-                transition_workspace.set_full(key, transition_workspace[key][:, :steps_diff])
+                transition_workspace.set_full(
+                    key, transition_workspace[key][:, :steps_diff]
+                )
 
         nb_steps += transition_workspace.batch_size()
 
@@ -220,9 +221,9 @@ def run_dqn(cfg, logger, trial=None):
 
             q_values, terminated, truncated, reward, action = sampled_trans_ws[
                 "q_values",
-                'env/terminated',
-                'env/truncated',
-                'env/reward',
+                "env/terminated",
+                "env/truncated",
+                "env/reward",
                 "action",
             ]
 
@@ -263,8 +264,8 @@ def run_dqn(cfg, logger, trial=None):
 
         # Update the target network
         if (
-                nb_steps - tmp_steps_target_update
-                > cfg.algorithm.target_critic_update_interval
+            nb_steps - tmp_steps_target_update
+            > cfg.algorithm.target_critic_update_interval
         ):
             tmp_steps_target_update = nb_steps
             q_agent_target.agent = copy.deepcopy(q_agent.agent)
@@ -280,7 +281,7 @@ def run_dqn(cfg, logger, trial=None):
                 choose_action=True,
             )
             rewards = eval_workspace["env/cumulated_reward"][-1]
-            mean, std = rewards.mean(), rewards.std()
+            mean = rewards.mean()
 
             logger.log_reward_losses(rewards, nb_steps)
 
@@ -295,9 +296,9 @@ def run_dqn(cfg, logger, trial=None):
 # %%
 def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
     # code suivant assez moche, certes, piste d’amélioration possible
-    suggest_type = cfg['suggest_type']
-    args = cfg.keys() - ['suggest_type']
-    args_str = ', '.join([f'{arg}={cfg[arg]}' for arg in args])
+    suggest_type = cfg["suggest_type"]
+    args = cfg.keys() - ["suggest_type"]
+    args_str = ", ".join([f"{arg}={cfg[arg]}" for arg in args])
     return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
 
 
@@ -306,15 +307,19 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
         if type(cfg[variable_name]) != DictConfig:
             continue
         else:
-            if 'suggest_type' in cfg[variable_name].keys():
-                cfg[variable_name] = get_trial_value(trial, cfg[variable_name], variable_name)
+            if "suggest_type" in cfg[variable_name].keys():
+                cfg[variable_name] = get_trial_value(
+                    trial, cfg[variable_name], variable_name
+                )
             else:
                 cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
     return cfg
 
 
 # %%
-@hydra.main(config_path="configs/", config_name="cartpole_wandb_optuna.yaml")  # , version_base="1.3")
+@hydra.main(
+    config_path="configs/", config_name="cartpole_wandb_optuna.yaml"
+)  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
@@ -329,7 +334,7 @@ def main(cfg_raw: DictConfig):
                 trial_result: float = run_dqn(cfg_sampled, logger, trial)
                 logger.close()
                 return trial_result
-            except optuna.exceptions.TrialPruned as e:
+            except optuna.exceptions.TrialPruned:
                 logger.close(exit_code=1)
 
         study = optuna.create_study(**cfg_optuna.study)

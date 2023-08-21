@@ -22,12 +22,13 @@ from bbrl_algos.models.stochastic_actors import StateDependentVarianceContinuous
 from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
 from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
-from bbrl_algos.models.loggers import MyLogger, Logger
+from bbrl_algos.models.loggers import Logger
 from bbrl_algos.wrappers.env_wrappers import RocketLanderWrapper
 from bbrl.utils.chrono import Chrono
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
+from bbrl_algos.models.envs import get_env_agents
 
 # HYDRA_FULL_ERROR = 1
 
@@ -48,7 +49,6 @@ def create_a2c_agent(cfg, train_env_agent, eval_env_agent):
     # Get an agent that is executed on a complete workspace
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
-    train_agent.seed(cfg.algorithm.seed)
     return train_agent, eval_agent, critic_agent
 
 
@@ -90,21 +90,10 @@ def run_a2c(cfg, max_grad_norm=0.5):
     # 1)  Build the  logger
     chrono = Chrono()
     logger = Logger(cfg)
-    best_reward = float('-inf')
+    best_reward = float("-inf")
 
     # 2) Create the environment agent
-    train_env_agent = AutoResetGymAgent(
-        get_class(cfg.gym_env),
-        get_arguments(cfg.gym_env),
-        cfg.algorithm.n_envs,
-        cfg.algorithm.seed,
-    )
-    eval_env_agent = NoAutoResetGymAgent(
-        get_class(cfg.gym_env),
-        get_arguments(cfg.gym_env),
-        cfg.algorithm.n_envs,
-        cfg.algorithm.seed,
-    )
+    train_env_agent, eval_env_agent = get_env_agents(cfg)
 
     # 3) Create the A2C Agent
     a2c_agent, eval_agent, critic_agent = create_a2c_agent(

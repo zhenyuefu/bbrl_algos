@@ -44,12 +44,16 @@ def soft_update_params(net, target_net, tau):
 def create_ddpg_agent(cfg, train_env_agent, eval_env_agent):
     obs_size, act_size = train_env_agent.get_obs_and_actions_sizes()
     critic = ContinuousQAgent(
-        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size,
+        obs_size,
+        cfg.algorithm.architecture.critic_hidden_size,
+        act_size,
         seed=cfg.algorithm.seed.q,
     )
     target_critic = copy.deepcopy(critic)
     actor = ContinuousDeterministicActor(
-        obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size,
+        obs_size,
+        cfg.algorithm.architecture.actor_hidden_size,
+        act_size,
     )
     # target_actor = copy.deepcopy(actor)
     noise_agent = AddGaussianNoise(cfg.algorithm.action_noise)
@@ -101,7 +105,7 @@ def compute_actor_loss(q_values):
 def run_ddpg(cfg, reward_logger, trial=None):
     # 1)  Build the  logger
     logger = Logger(cfg)
-    best_reward = float('-inf')
+    best_reward = float("-inf")
     delta_list = []
 
     # 2) Create the environment agent
@@ -225,7 +229,7 @@ def run_ddpg(cfg, reward_logger, trial=None):
                 trial.report(mean, nb_steps)
                 if trial.should_prune():
                     raise optuna.TrialPruned()
-            
+
             if cfg.plot_agents:
                 # plot_policy(
                 #    actor,
@@ -258,14 +262,12 @@ def run_ddpg(cfg, reward_logger, trial=None):
     return mean
 
 
-
-
 # %%
 def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
     # code suivant assez moche, certes, piste d’amélioration possible
-    suggest_type = cfg['suggest_type']
-    args = cfg.keys() - ['suggest_type']
-    args_str = ', '.join([f'{arg}={cfg[arg]}' for arg in args])
+    suggest_type = cfg["suggest_type"]
+    args = cfg.keys() - ["suggest_type"]
+    args_str = ", ".join([f"{arg}={cfg[arg]}" for arg in args])
     return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
 
 
@@ -274,17 +276,19 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
         if type(cfg[variable_name]) != DictConfig:
             continue
         else:
-            if 'suggest_type' in cfg[variable_name].keys():
-                cfg[variable_name] = get_trial_value(trial, cfg[variable_name], variable_name)
+            if "suggest_type" in cfg[variable_name].keys():
+                cfg[variable_name] = get_trial_value(
+                    trial, cfg[variable_name], variable_name
+                )
             else:
                 cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
     return cfg
 
 
 # %%
-@hydra.main(config_path="configs/", 
-            config_name="ddpg_cartpole.yaml"
-            )  # , version_base="1.3")
+@hydra.main(
+    config_path="configs/", config_name="ddpg_cartpole.yaml"
+)  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
@@ -299,7 +303,7 @@ def main(cfg_raw: DictConfig):
                 trial_result: float = run_ddpg(cfg_sampled, logger, trial)
                 logger.close()
                 return trial_result
-            except optuna.exceptions.TrialPruned as e:
+            except optuna.exceptions.TrialPruned:
                 logger.close(exit_code=1)
 
         study = optuna.create_study(**cfg_optuna.study)

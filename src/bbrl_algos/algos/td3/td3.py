@@ -89,7 +89,7 @@ def setup_optimizers(cfg, actor, critic_1, critic_2):
 def compute_critic_loss(cfg, reward, must_bootstrap, q_values_1, q_values_2, q_next):
     # Compute temporal difference
     target = (
-            reward[:-1][0] + cfg.algorithm.discount_factor * q_next * must_bootstrap.int()
+        reward[:-1][0] + cfg.algorithm.discount_factor * q_next * must_bootstrap.int()
     )
     td_1 = target - q_values_1.squeeze(-1)
     td_2 = target - q_values_2.squeeze(-1)
@@ -108,7 +108,7 @@ def compute_actor_loss(q_values):
 def run_td3(cfg, reward_logger, trial=None):
     # 1)  Build the  logger
     logger = Logger(cfg)
-    best_reward = float('-inf')
+    best_reward = float("-inf")
     delta_list = []
 
     # 2) Create the environment agents
@@ -262,21 +262,21 @@ def run_td3(cfg, reward_logger, trial=None):
                 trial.report(mean, nb_steps)
                 if trial.should_prune():
                     raise optuna.TrialPruned()
-            
+
             if cfg.save_best and mean > best_reward:
                 best_reward = mean
                 directory = "./td3_agent/"
                 if not os.path.exists(directory):
                     os.makedirs(directory)
                 filename = (
-                        directory
-                        + cfg.gym_env.env_name
-                        + "#td3#T1_T2#"
-                        + str(mean.item())
-                        + ".agt"
+                    directory
+                    + cfg.gym_env.env_name
+                    + "#td3#T1_T2#"
+                    + str(mean.item())
+                    + ".agt"
                 )
                 eval_agent.save_model(filename)
-                
+
                 if cfg.plot_agents:
                     plot_policy(
                         actor,
@@ -293,17 +293,16 @@ def run_td3(cfg, reward_logger, trial=None):
                         cfg.gym_env.env_name,
                         nb_steps,
                     )
-    
-    return mean
 
+    return mean
 
 
 # %%
 def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
     # code suivant assez moche, certes, piste d’amélioration possible
-    suggest_type = cfg['suggest_type']
-    args = cfg.keys() - ['suggest_type']
-    args_str = ', '.join([f'{arg}={cfg[arg]}' for arg in args])
+    suggest_type = cfg["suggest_type"]
+    args = cfg.keys() - ["suggest_type"]
+    args_str = ", ".join([f"{arg}={cfg[arg]}" for arg in args])
     return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
 
 
@@ -312,17 +311,19 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
         if type(cfg[variable_name]) != DictConfig:
             continue
         else:
-            if 'suggest_type' in cfg[variable_name].keys():
-                cfg[variable_name] = get_trial_value(trial, cfg[variable_name], variable_name)
+            if "suggest_type" in cfg[variable_name].keys():
+                cfg[variable_name] = get_trial_value(
+                    trial, cfg[variable_name], variable_name
+                )
             else:
                 cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
     return cfg
 
 
 # %%
-@hydra.main(config_path="configs/", 
-            config_name="ddpg_cartpole.yaml"
-            )  # , version_base="1.3")
+@hydra.main(
+    config_path="configs/", config_name="ddpg_cartpole.yaml"
+)  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
@@ -337,7 +338,7 @@ def main(cfg_raw: DictConfig):
                 trial_result: float = run_td3(cfg_sampled, logger, trial)
                 logger.close()
                 return trial_result
-            except optuna.exceptions.TrialPruned as e:
+            except optuna.exceptions.TrialPruned:
                 logger.close(exit_code=1)
 
         study = optuna.create_study(**cfg_optuna.study)
