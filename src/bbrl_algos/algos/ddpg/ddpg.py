@@ -54,6 +54,7 @@ def create_ddpg_agent(cfg, train_env_agent, eval_env_agent):
         obs_size,
         cfg.algorithm.architecture.actor_hidden_size,
         act_size,
+        seed=cfg.algorithm.seed.act,
     )
     # target_actor = copy.deepcopy(actor)
     noise_agent = AddGaussianNoise(cfg.algorithm.action_noise)

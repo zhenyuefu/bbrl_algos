@@ -25,6 +25,7 @@
         train: 2
         eval: 9
         q: 1
+        act: 2
         explorer: 4
         torch: 7
 

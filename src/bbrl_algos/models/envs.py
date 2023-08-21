@@ -13,13 +13,13 @@ def get_env_agents(
         partial(make_env, cfg.gym_env.env_name, autoreset=autoreset),
         cfg.algorithm.n_envs,
         include_last_state=include_last_state,
-    ).seed(cfg.algorithm.seed)
+    ).seed(seed=cfg.algorithm.seed.train)
 
     # Test environment
     eval_env_agent = ParallelGymAgent(
         partial(make_env, cfg.gym_env.env_name),
         cfg.algorithm.nb_evals,
         include_last_state=include_last_state,
-    ).seed(cfg.algorithm.seed)
+    ).seed(cfg.algorithm.seed.eval)
 
     return train_env_agent, eval_env_agent
