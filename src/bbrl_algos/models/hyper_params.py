@@ -35,21 +35,20 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
     return cfg
 
 
-def objective(trial, run_func, cfg_raw):
-    cfg_sampled = get_trial_config(trial, cfg_raw.copy())
-
-    logger = Logger(cfg_sampled)
-    try:
-        trial_result: float = run_func(cfg_sampled, logger, trial)
-        logger.close()
-        return trial_result
-    except optuna.exceptions.TrialPruned:
-        logger.close(exit_code=1)
-        return float("-inf")
-
-
-def launch_optuna(cfg_raw):
+def launch_optuna(cfg_raw, run_func):
     cfg_optuna = cfg_raw.optuna
+
+    def objective(trial, cfg_raw):
+        cfg_sampled = get_trial_config(trial, cfg_raw.copy())
+
+        logger = Logger(cfg_sampled)
+        try:
+            trial_result: float = run_func(cfg_sampled, logger, trial)
+            logger.close()
+            return trial_result
+        except optuna.exceptions.TrialPruned:
+            logger.close(exit_code=1)
+            return float("-inf")
 
     # study = optuna.create_study(**cfg_optuna.study)
     study = optuna.create_study(
@@ -75,7 +74,7 @@ def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     if "optuna" in cfg_raw:
-        launch_optuna(cfg_raw)
+        launch_optuna(cfg_raw, run_ddpg)
     else:
         logger = Logger(cfg_raw)
         run_ddpg(cfg_raw, logger)
