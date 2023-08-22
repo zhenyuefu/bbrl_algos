@@ -11,7 +11,8 @@
             seed: 1
             nb_seeds: 1
             n_envs: 8
-            n_steps: 32
+            n_steps_train: 32
+            n_steps: 70000
             max_grad_norm: 0.5
             buffer_size: 1e6
             batch_size: 256
@@ -19,7 +20,6 @@
             nb_evals: 10
             learning_starts: 10000
             tau_target: 0.05
-            max_epochs: 25000
             discount_factor: 0.98
             entropy_coef: 1e-7
             target_entropy: auto

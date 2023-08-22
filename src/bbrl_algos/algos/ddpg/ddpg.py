@@ -140,9 +140,9 @@ def run_ddpg(cfg, logger, trial=None):
         if nb_steps > 0:
             train_workspace.zero_grad()
             train_workspace.copy_n_last_steps(1)
-            train_agent(train_workspace, t=1, n_steps=cfg.algorithm.n_steps)
+            train_agent(train_workspace, t=1, n_steps=cfg.algorithm.n_steps_train)
         else:
-            train_agent(train_workspace, t=0, n_steps=cfg.algorithm.n_steps)
+            train_agent(train_workspace, t=0, n_steps=cfg.algorithm.n_steps_train)
 
         transition_workspace = train_workspace.get_transitions(filter_key="env/done")
         action = transition_workspace["action"]
@@ -214,16 +214,16 @@ def run_ddpg(cfg, logger, trial=None):
             eval_workspace = Workspace()  # Used for evaluation
             eval_agent(eval_workspace, t=0, stop_variable="env/done")
 
-            rewards = eval_workspace["env/cumulated_reward"]
+            rewards = eval_workspace["env/cumulated_reward"][-1]
             q_agent(eval_workspace, t=0, stop_variable="env/done")
             q_values = eval_workspace["q_value"].squeeze()
             delta = q_values - rewards
             maxi_delta = delta.max(axis=0)[0].detach().numpy()
             delta_list.append(maxi_delta)
 
-            mean = rewards[-1].mean()
-            logger.add_log("reward", mean, nb_steps)
-            print(f"nb_steps: {nb_steps}, reward: {mean}")
+            mean = rewards.mean()
+            logger.log_reward_losses(rewards, nb_steps)
+            print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
 
             if trial is not None:
                 trial.report(mean, nb_steps)

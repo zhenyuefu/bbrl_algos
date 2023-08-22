@@ -139,27 +139,25 @@ def run_td3(cfg, logger, trial=None):
     tmp_steps = 0
 
     # Training loop
-    for epoch in range(cfg.algorithm.max_epochs):
+    while nb_steps < cfg.algorithm.n_steps:
         # Execute the agent in the workspace
-        if epoch > 0:
+        if nb_steps > 0:
             train_workspace.zero_grad()
             train_workspace.copy_n_last_steps(1)
 
-            # below, was n_steps=cfg.algorithm.n_steps - 1
-            train_agent(train_workspace, t=1, n_steps=cfg.algorithm.n_steps)
+            # below, was n_steps=cfg.algorithm.n_steps_train - 1
+            train_agent(train_workspace, t=1, n_steps=cfg.algorithm.n_steps_train)
         else:
-            train_agent(train_workspace, t=0, n_steps=cfg.algorithm.n_steps)
+            train_agent(train_workspace, t=0, n_steps=cfg.algorithm.n_steps_train)
 
         transition_workspace = train_workspace.get_transitions()
         action = transition_workspace["action"]
         nb_steps += action[0].shape[0]
-        if epoch > 0 or cfg.algorithm.n_steps > 1:
+        if nb_steps > 0 or cfg.algorithm.n_steps_train > 1:
             rb.put(transition_workspace)
-            # rb.print_obs()
 
         for _ in range(cfg.algorithm.optim_n_updates):
 
-            # print(f"done {done}, reward {reward}, action {action}")
             if nb_steps > cfg.algorithm.learning_starts:
                 rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
 
@@ -246,16 +244,16 @@ def run_td3(cfg, logger, trial=None):
             eval_workspace = Workspace()  # Used for evaluation
             eval_agent(eval_workspace, t=0, stop_variable="env/done")
 
-            rewards = eval_workspace["env/cumulated_reward"]
+            rewards = eval_workspace["env/cumulated_reward"][-1]
             q_agent_1(eval_workspace, t=0, stop_variable="env/done")
             q_values = eval_workspace["q_value"].squeeze()
             delta = q_values - rewards
             maxi_delta = delta.max(axis=0)[0].detach().numpy()
             delta_list.append(maxi_delta)
 
-            mean = rewards[-1].mean()
-            logger.log_reward_losses(rewards[-1], nb_steps)
-            print(f"nb_steps: {nb_steps}, reward: {mean}")
+            mean = rewards.mean()
+            logger.log_reward_losses(rewards, nb_steps)
+            print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
 
             if trial is not None:
                 trial.report(mean, nb_steps)

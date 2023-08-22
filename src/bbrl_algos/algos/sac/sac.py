@@ -49,11 +49,17 @@ def create_sac_agent(cfg, train_env_agent, eval_env_agent):
     tr_agent = Agents(train_env_agent, actor)
     ev_agent = Agents(eval_env_agent, actor)
     critic_1 = ContinuousQAgent(
-        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size, name="critic-1"
+        obs_size,
+        cfg.algorithm.architecture.critic_hidden_size,
+        act_size,
+        name="critic-1",
     )
     target_critic_1 = copy.deepcopy(critic_1).set_name("target-critic-1")
     critic_2 = ContinuousQAgent(
-        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size, name="critic-2"
+        obs_size,
+        cfg.algorithm.architecture.critic_hidden_size,
+        act_size,
+        name="critic-2",
     )
     target_critic_2 = copy.deepcopy(critic_2).set_name("target-critic-2")
     train_agent = TemporalAgent(tr_agent)
@@ -106,12 +112,14 @@ def setup_entropy_optimizers(cfg):
 
 # %%
 def compute_critic_loss(
-    cfg, reward, must_bootstrap,
-    t_actor, 
-    q_agents, 
-    target_q_agents, 
+    cfg,
+    reward,
+    must_bootstrap,
+    t_actor,
+    q_agents,
+    target_q_agents,
     rb_workspace,
-    ent_coef
+    ent_coef,
 ):
     """
     Computes the critic loss for a set of $S$ transition samples
@@ -129,7 +137,7 @@ def compute_critic_loss(
     Returns:
         Tuple[torch.Tensor, torch.Tensor]: The two critic losses (scalars)
     """
-                                                                                                                                                              
+
     # Compute q_values from both critics with the actions present in the buffer:
     # at t, we have Q(s,a) from the (s,a) in the RB
     q_agents(rb_workspace, t=0, n_steps=1)
@@ -145,7 +153,10 @@ def compute_critic_loss(
         target_q_agents(rb_workspace, t=1, n_steps=1)
 
     q_values_rb_1, q_values_rb_2, post_q_values_1, post_q_values_2 = rb_workspace[
-        "critic-1/q_value", "critic-2/q_value", "target-critic-1/q_value", "target-critic-2/q_value"
+        "critic-1/q_value",
+        "critic-2/q_value",
+        "target-critic-1/q_value",
+        "target-critic-2/q_value",
     ]
 
     # [[student]] Compute temporal difference
@@ -153,9 +164,7 @@ def compute_critic_loss(
     q_next = torch.min(post_q_values_1[1], post_q_values_2[1]).squeeze(-1)
     v_phi = q_next - ent_coef * action_logprobs_next
 
-    target = (
-        reward[-1] + cfg.algorithm.discount_factor * v_phi * must_bootstrap.int()
-    )
+    target = reward[-1] + cfg.algorithm.discount_factor * v_phi * must_bootstrap.int()
     td_1 = target - q_values_rb_1[0].squeeze(-1)
     td_2 = target - q_values_rb_2[0].squeeze(-1)
     td_error_1 = td_1**2
@@ -176,35 +185,29 @@ def compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace):
     :param q_agents: The critics (as temporal agent)
     :param rb_workspace: The replay buffer (2 time steps, $t$ and $t+1$)
     """
-    
+
     # Recompute the q_values from the current actor, not from the actions in the buffer
 
-    # [[student]] Recompute the action with the current actor (at $a_t$)
     t_actor(rb_workspace, t=0, n_steps=1, stochastic=True)
     action_logprobs_new = rb_workspace["policy/action_logprobs"]
-    # [[/student]]
 
-    # [[student]] Compute Q-values
     q_agents(rb_workspace, t=0, n_steps=1)
     q_values_1, q_values_2 = rb_workspace["critic-1/q_value", "critic-2/q_value"]
-    # [[/student]]
+
     current_q_values = torch.min(q_values_1, q_values_2).squeeze(-1)
 
-    # [[student]] Compute the actor loss
-    ## actor_loss =
     actor_loss = ent_coef * action_logprobs_new[0] - current_q_values[0]
-    # [[/student]]
 
     return actor_loss.mean()
 
 
 def run_sac(trial, cfg, logger):
-    best_reward = float('-inf')
+    best_reward = float("-inf")
     ent_coef = cfg.algorithm.entropy_coef
 
     # 2) Create the environment agent
     train_env_agent, eval_env_agent = get_env_agents(cfg)
-    
+
     # 3) Create the SAC Agent
     (
         train_agent,
@@ -267,25 +270,21 @@ def run_sac(trial, cfg, logger):
             # Get a sample from the workspace
             rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
 
-            terminated, reward = rb_workspace[
-                "env/terminated", "env/reward"
-            ]
+            terminated, reward = rb_workspace["env/terminated", "env/reward"]
             ent_coef = torch.exp(log_entropy_coef.detach())
 
-            # Critic update part ###############################
+            # Critic update part #
             critic_optimizer.zero_grad()
 
-            (
-                critic_loss_1, critic_loss_2
-            ) = compute_critic_loss(
-                cfg, 
-                reward, 
+            (critic_loss_1, critic_loss_2) = compute_critic_loss(
+                cfg,
+                reward,
                 ~terminated[1],
                 t_actor,
                 q_agents,
                 target_q_agents,
                 rb_workspace,
-                ent_coef
+                ent_coef,
             )
 
             logger.add_log("critic_loss_1", critic_loss_1, nb_steps)
@@ -300,12 +299,9 @@ def run_sac(trial, cfg, logger):
             )
             critic_optimizer.step()
 
-
-            # Actor update part ###############################
+            # Actor update part #
             actor_optimizer.zero_grad()
-            actor_loss = compute_actor_loss(
-                ent_coef, t_actor, q_agents, rb_workspace
-            )
+            actor_loss = compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace)
             logger.add_log("actor_loss", actor_loss, nb_steps)
             actor_loss.backward()
             torch.nn.utils.clip_grad_norm_(
@@ -313,14 +309,12 @@ def run_sac(trial, cfg, logger):
             )
             actor_optimizer.step()
 
-            # Entropy coef update part #####################################################
+            # Entropy coef update part #
             if entropy_coef_optimizer is not None:
                 # See Eq. (17) of the SAC and Applications paper
                 # log. probs have been computed when computing
                 # the actor loss
-                action_logprobs_rb = rb_workspace[
-                    "policy/action_logprobs"
-                ].detach()
+                action_logprobs_rb = rb_workspace["policy/action_logprobs"].detach()
                 entropy_coef_loss = -(
                     log_entropy_coef.exp() * (action_logprobs_rb + target_entropy)
                 ).mean()
@@ -330,15 +324,13 @@ def run_sac(trial, cfg, logger):
                 logger.add_log("entropy_coef_loss", entropy_coef_loss, nb_steps)
                 logger.add_log("entropy_coef", ent_coef, nb_steps)
 
-            ####################################################
-
             # Soft update of target q function
             tau = cfg.algorithm.tau_target
             soft_update_params(critic_1, target_critic_1, tau)
             soft_update_params(critic_2, target_critic_2, tau)
             # soft_update_params(actor, target_actor, tau)
 
-        # Evaluate ###########################################
+        # Evaluate
         if nb_steps - tmp_steps > cfg.algorithm.eval_interval:
             tmp_steps = nb_steps
             eval_workspace = Workspace()  # Used for evaluation
@@ -350,10 +342,7 @@ def run_sac(trial, cfg, logger):
             )
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
-            logger.add_log("reward/mean", mean, nb_steps)
-            logger.add_log("reward/max", rewards.max(), nb_steps)
-            logger.add_log("reward/min", rewards.min(), nb_steps)
-            logger.add_log("reward/min", rewards.median(), nb_steps)
+            logger.log_reward_losses(rewards, nb_steps)
             print(f"nb steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
             if cfg.save_best and mean > best_reward:
                 best_reward = mean
