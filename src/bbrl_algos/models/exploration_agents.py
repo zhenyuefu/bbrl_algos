@@ -27,10 +27,9 @@ class EGreedyActionSelector(TimeAgent, SeedableAgent, SerializableAgent):
         self.set(("action", t), action)
 
 
-
 class SoftmaxActionSelector(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, temperature):
-        super().__init__()
+    def __init__(self, temperature, **kwargs):
+        super().__init__(**kwargs)
         self.temperature = temperature
 
     def forward(self, t, **kwargs):
@@ -41,8 +40,8 @@ class SoftmaxActionSelector(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class RandomDiscreteActor(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, nb_actions):
-        super().__init__()
+    def __init__(self, nb_actions, **kwargs):
+        super().__init__(**kwargs)
         self.nb_actions = nb_actions
 
     def forward(self, t, **kwargs):
@@ -53,8 +52,8 @@ class RandomDiscreteActor(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class AddGaussianNoise(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, sigma):
-        super().__init__()
+    def __init__(self, sigma, **kwargs):
+        super().__init__(**kwargs)
         self.sigma = sigma
 
     def forward(self, t, **kwargs):
@@ -69,7 +68,8 @@ class AddOUNoise(TimeAgent, SeedableAgent, SerializableAgent):
     Ornstein Uhlenbeck process noise for actions as suggested by DDPG paper
     """
 
-    def __init__(self, std_dev, theta=0.15, dt=1e-2):
+    def __init__(self, std_dev, theta=0.15, dt=1e-2, **kwargs):
+        super().__init__(**kwargs)
         self.theta = theta
         self.std_dev = std_dev
         self.dt = dt
@@ -78,17 +78,17 @@ class AddOUNoise(TimeAgent, SeedableAgent, SerializableAgent):
     def forward(self, t, **kwargs):
         act = self.get(("action", t))
         x = (
-                self.x_prev
-                + self.theta * (act - self.x_prev) * self.dt
-                + self.std_dev * math.sqrt(self.dt) * torch.randn(act.shape)
+            self.x_prev
+            + self.theta * (act - self.x_prev) * self.dt
+            + self.std_dev * math.sqrt(self.dt) * torch.randn(act.shape)
         )
         self.x_prev = x
         self.set(("action", t), x)
 
 
 class KLAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, model_1, model_2):
-        super().__init__()
+    def __init__(self, model_1, model_2, **kwargs):
+        super().__init__(**kwargs)
         self.model_1 = model_1
         self.model_2 = model_2
 
