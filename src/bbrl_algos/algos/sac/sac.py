@@ -251,14 +251,14 @@ def run_sac(cfg, logger, trial=None):
             train_agent(
                 train_workspace,
                 t=1,
-                n_steps=cfg.algorithm.n_steps,
+                n_steps=cfg.algorithm.n_steps_train,
                 stochastic=True,
             )
         else:
             train_agent(
                 train_workspace,
                 t=0,
-                n_steps=cfg.algorithm.n_steps,
+                n_steps=cfg.algorithm.n_steps_train,
                 stochastic=True,
             )
 
