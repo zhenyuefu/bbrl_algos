@@ -4,9 +4,11 @@ import copy
 import torch
 import torch.nn as nn
 import gym
-import my_gym
+import bbrl_gymnasium
 import hydra
 import numpy as np
+import optuna
+import yaml
 
 from omegaconf import DictConfig
 from bbrl.utils.chrono import Chrono
@@ -241,7 +243,6 @@ def run_sac(trial, cfg, logger):
         target_entropy = cfg.algorithm.target_entropy
 
     # Training loop
-    best_agent = actor
     for epoch in range(cfg.algorithm.max_epochs):
         # Execute the agent in the workspace
         if epoch > 0:
@@ -343,37 +344,88 @@ def run_sac(trial, cfg, logger):
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
             logger.log_reward_losses(rewards, nb_steps)
-            print(f"nb steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
-            if cfg.save_best and mean > best_reward:
+
+            if mean > best_reward:
                 best_reward = mean
+
+            print(f"nb steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
+            if cfg.save_best and mean == best_reward:
                 directory = f"./agents/{cfg.gym_env.env_name}/sac_agent/"
                 if not os.path.exists(directory):
                     os.makedirs(directory)
                 filename = directory + "sac_" + str(mean.item()) + ".agt"
-                best_filename = filename
                 actor.save_model(filename)
 
-    if best_filename:
-        # Load agent from disk
-        best_agent = torch.load(best_filename)
+    return best_reward
+
+
+def load_best(best_filename):
+    best_agent = torch.load(best_filename)
     return best_agent
 
 
+# %%
+def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
+    # code suivant assez moche, certes, piste d’amélioration possible
+    suggest_type = cfg["suggest_type"]
+    args = cfg.keys() - ["suggest_type"]
+    args_str = ", ".join([f"{arg}={cfg[arg]}" for arg in args])
+    return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
+
+
+def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
+    for variable_name in cfg.keys():
+        if type(cfg[variable_name]) != DictConfig:
+            continue
+        else:
+            if "suggest_type" in cfg[variable_name].keys():
+                cfg[variable_name] = get_trial_value(
+                    trial, cfg[variable_name], variable_name
+                )
+            else:
+                cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
+    return cfg
+
+
+# %%
 @hydra.main(
     config_path="./configs/",
     # config_name="sac_cartpolecontinuous.yaml",
     config_name="sac_pendulum.yaml",
-    # version_base="1.1",
+    # version_base="1.3",
 )
-def main(cfg: DictConfig):
-    # print(OmegaConf.to_yaml(cfg))
-    chrono = Chrono()
-    torch.manual_seed(cfg.algorithm.seed)
-    logger = Logger(cfg)
-    run_sac(None, cfg, logger)
-    chrono.stop()
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
+
+    if "optuna" in cfg_raw:
+        cfg_optuna = cfg_raw.optuna
+
+        def objective(trial):
+            cfg_sampled = get_trial_config(trial, cfg_raw.copy())
+
+            logger = Logger(cfg_sampled)
+            try:
+                trial_result: float = run_sac(cfg_sampled, logger, trial)
+                logger.close()
+                return trial_result
+            except optuna.exceptions.TrialPruned:
+                logger.close(exit_code=1)
+                return float("-inf")
+
+        # study = optuna.create_study(**cfg_optuna.study)
+        study = optuna.create_study(
+            pruner=optuna.pruners.MedianPruner(), direction="maximize"
+        )
+        study.optimize(func=objective, **cfg_optuna.optimize)
+
+        file = open("best_params.yaml", "w")
+        yaml.dump(study.best_params, file)
+        file.close()
+
+    else:
+        logger = Logger(cfg_raw)
+        run_sac(cfg_raw, logger)
 
 
 if __name__ == "__main__":
-    sys.path.append(os.getcwd())
     main()

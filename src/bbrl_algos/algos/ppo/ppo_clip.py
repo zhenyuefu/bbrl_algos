@@ -15,7 +15,10 @@ import torch.nn as nn
 
 import gym
 import bbrl_gymnasium
+import optuna
+import yaml
 import hydra
+
 # from tqdm.auto import tqdm
 
 from omegaconf import DictConfig
@@ -161,8 +164,7 @@ def run_ppo_clip(trial, cfg, logger):
     optimizer = setup_optimizer(cfg, train_agent, critic_agent)
 
     # Training loop
-    best_policy = policy
-    for epoch in (range(cfg.algorithm.max_epochs)):
+    for epoch in range(cfg.algorithm.max_epochs):
         # Execute the training agent in the workspace
 
         # Handles continuation
@@ -321,7 +323,9 @@ def run_ppo_clip(trial, cfg, logger):
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
             log_reward_losses(logger, rewards, nb_steps)
-            print(f"nb_steps: {nb_steps}, reward: {mean:.3f}, best_reward: {best_reward:.3f}")
+            print(
+                f"nb_steps: {nb_steps}, reward: {mean:.3f}, best_reward: {best_reward:.3f}"
+            )
             if mean > best_reward:
                 best_reward = mean
                 if cfg.save_best:
@@ -352,6 +356,7 @@ def run_ppo_clip(trial, cfg, logger):
                             cfg.gym_env.env_name,
                             best_reward,
                         )
+
 
 @hydra.main(
     config_path="./configs/",
