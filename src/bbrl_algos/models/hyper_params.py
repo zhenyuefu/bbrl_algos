@@ -73,7 +73,6 @@ def launch_optuna(cfg_raw):
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
-    launch_optuna(cfg_raw)
 
     if "optuna" in cfg_raw:
         launch_optuna(cfg_raw)
