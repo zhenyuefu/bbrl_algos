@@ -1,5 +1,5 @@
     save_best: True
-    plot_agents: True
+    plot_agents: False
 
     log_dir: ./tmp
     video_dir: ${log_dir}/videos
@@ -25,6 +25,7 @@
         train: 2
         eval: 9
         q: 1
+        act: 2
         explorer: 4
         torch: 7
 
@@ -33,7 +34,7 @@
       optim_n_updates: 3
       n_envs: 1
       n_steps_train: 100
-      n_steps: 70000
+      n_steps: 300_000
       buffer_size: 2e5
       batch_size: 64
       tau_target: 0.05

@@ -103,8 +103,6 @@ def compute_actor_loss(q_values):
 def run_ddpg(cfg, logger, trial=None):
     # 1)  Build the  logger
     best_reward = float("-inf")
-    delta_list = []
-    mean = 0
 
     # 2) Create the environment agent
     train_env_agent, eval_env_agent = get_env_agents(cfg)
@@ -162,7 +160,7 @@ def run_ddpg(cfg, logger, trial=None):
                 # compute q_values: at t, we have Q(s,a) from the (s,a) in the RB
                 # the detach_actions=True changes nothing in the results
                 q_agent(rb_workspace, t=0, n_steps=1, detach_actions=True)
-                q_values = rb_workspace["q_value"]
+                q_values = rb_workspace["critic/q_value"]
 
                 with torch.no_grad():
                     # replace the action at t+1 in the RB with \pi(s_{t+1}), to compute Q(s_{t+1}, \pi(s_{t+1}) below
@@ -171,7 +169,7 @@ def run_ddpg(cfg, logger, trial=None):
                     target_q_agent(rb_workspace, t=1, n_steps=1, detach_actions=True)
                     # q_agent(rb_workspace, t=1, n_steps=1)
                 # finally q_values contains the above collection at t=0 and t=1
-                post_q_values = rb_workspace["q_value"]
+                post_q_values = rb_workspace["target-critic/q_value"]
 
                 # Compute critic loss
                 critic_loss = compute_critic_loss(
@@ -191,7 +189,7 @@ def run_ddpg(cfg, logger, trial=None):
                 # We determine the Q values resulting from actions of the current policy
                 q_agent(rb_workspace, t=0, n_steps=1)
                 # and we back-propagate the corresponding loss to maximize the Q values
-                q_values = rb_workspace["q_value"]
+                q_values = rb_workspace["critic/q_value"]
                 actor_loss = compute_actor_loss(q_values)
                 logger.add_log("actor_loss", actor_loss, nb_steps)
                 # if -25 < actor_loss < 0 and nb_steps > 2e5:
@@ -212,11 +210,6 @@ def run_ddpg(cfg, logger, trial=None):
             eval_agent(eval_workspace, t=0, stop_variable="env/done")
 
             rewards = eval_workspace["env/cumulated_reward"][-1]
-            q_agent(eval_workspace, t=0, stop_variable="env/done")
-            q_values = eval_workspace["critic/q_value"].squeeze()
-            delta = q_values - rewards
-            maxi_delta = delta.max(axis=0)[0].detach().numpy()
-            delta_list.append(maxi_delta)
 
             mean = rewards.mean()
             logger.log_reward_losses(rewards, nb_steps)
@@ -284,7 +277,9 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 
 # %%
 @hydra.main(
-    config_path="configs/", config_name="ddpg_cartpole.yaml"
+    config_path="configs/",
+    # config_name="ddpg_cartpole.yaml"
+    config_name="ddpg_pendulum.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
