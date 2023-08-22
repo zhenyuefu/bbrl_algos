@@ -10,7 +10,6 @@ from typing import Callable, List
 
 import hydra
 import optuna
-import yaml
 from omegaconf import DictConfig
 
 # %%
@@ -32,11 +31,12 @@ from bbrl.utils.replay_buffer import ReplayBuffer
 from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl_algos.models.loggers import Logger
+from bbrl_algos.models.hyper_params import launch_optuna
 
 
 # %%
 def compute_critic_loss(
-        discount_factor, reward, must_bootstrap, action, q_values, q_target=None
+    discount_factor, reward, must_bootstrap, action, q_values, q_target=None
 ):
     """Compute critic loss
     Args:
@@ -61,16 +61,16 @@ def compute_critic_loss(
 
 # %%
 def make_wrappers(
-        autoreset: bool,
+    autoreset: bool,
 ) -> List[Callable[[Env], Env]]:
     return [AutoResetWrapper] if autoreset else []
 
 
 # %%
 def make_env(
-        identifier: str,
-        autoreset: bool,
-        **kwargs,
+    identifier: str,
+    autoreset: bool,
+    **kwargs,
 ) -> Env:
     env: Env = gym.make(id=identifier, **kwargs)
     wrappers = make_wrappers(
@@ -264,8 +264,8 @@ def run_dqn(cfg, logger, trial=None):
 
         # Update the target network
         if (
-                nb_steps - tmp_steps_target_update
-                > cfg.algorithm.target_critic_update_interval
+            nb_steps - tmp_steps_target_update
+            > cfg.algorithm.target_critic_update_interval
         ):
             tmp_steps_target_update = nb_steps
             q_agent_target.agent = copy.deepcopy(q_agent.agent)
@@ -294,29 +294,6 @@ def run_dqn(cfg, logger, trial=None):
 
 
 # %%
-def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
-    # code suivant assez moche, certes, piste d’amélioration possible
-    suggest_type = cfg["suggest_type"]
-    args = cfg.keys() - ["suggest_type"]
-    args_str = ", ".join([f"{arg}={cfg[arg]}" for arg in args])
-    return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
-
-
-def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
-    for variable_name in cfg.keys():
-        if type(cfg[variable_name]) != DictConfig:
-            continue
-        else:
-            if "suggest_type" in cfg[variable_name].keys():
-                cfg[variable_name] = get_trial_value(
-                    trial, cfg[variable_name], variable_name
-                )
-            else:
-                cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
-    return cfg
-
-
-# %%
 @hydra.main(
     config_path="configs/", config_name="cartpole_wandb_optuna_choices.yaml"
 )  # , version_base="1.3")
@@ -324,27 +301,7 @@ def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     if "optuna" in cfg_raw:
-        cfg_optuna = cfg_raw.optuna
-
-        def objective(trial):
-            cfg_sampled = get_trial_config(trial, cfg_raw.copy())
-
-            logger = Logger(cfg_sampled)
-            try:
-                trial_result: float = run_dqn(cfg_sampled, logger, trial)
-                logger.close()
-                return trial_result
-            except optuna.exceptions.TrialPruned:
-                logger.close(exit_code=1)
-
-        study = optuna.create_study(**cfg_optuna.study)
-        study.optimize(func=objective, **cfg_optuna.optimize)
-
-        file = open("best_params.yaml", "w")
-        yaml.dump(study.best_params, file)
-        file.close()
-
-
+        launch_optuna(cfg_raw, run_dqn)
     else:
         logger = Logger(cfg_raw)
         run_dqn(cfg_raw, logger)

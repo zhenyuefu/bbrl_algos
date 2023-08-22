@@ -8,7 +8,6 @@ import bbrl_gymnasium
 import hydra
 import numpy as np
 import optuna
-import yaml
 
 from omegaconf import DictConfig
 from bbrl.utils.chrono import Chrono
@@ -28,6 +27,7 @@ from bbrl_algos.models.stochastic_actors import (
 from bbrl_algos.models.critics import ContinuousQAgent
 from bbrl_algos.models.shared_models import soft_update_params
 from bbrl_algos.models.envs import get_env_agents
+from bbrl_algos.models.hyper_params import launch_optuna
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -398,30 +398,7 @@ def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     if "optuna" in cfg_raw:
-        cfg_optuna = cfg_raw.optuna
-
-        def objective(trial):
-            cfg_sampled = get_trial_config(trial, cfg_raw.copy())
-
-            logger = Logger(cfg_sampled)
-            try:
-                trial_result: float = run_sac(cfg_sampled, logger, trial)
-                logger.close()
-                return trial_result
-            except optuna.exceptions.TrialPruned:
-                logger.close(exit_code=1)
-                return float("-inf")
-
-        # study = optuna.create_study(**cfg_optuna.study)
-        study = optuna.create_study(
-            pruner=optuna.pruners.MedianPruner(), direction="maximize"
-        )
-        study.optimize(func=objective, **cfg_optuna.optimize)
-
-        file = open("best_params.yaml", "w")
-        yaml.dump(study.best_params, file)
-        file.close()
-
+        launch_optuna(cfg_raw, run_sac)
     else:
         logger = Logger(cfg_raw)
         run_sac(cfg_raw, logger)

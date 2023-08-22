@@ -1,7 +1,6 @@
-import sys
 import os
 import copy
-import numpy as np
+import numpy
 
 import torch
 import torch.nn as nn
@@ -9,7 +8,6 @@ import gym
 import bbrl_gymnasium
 import hydra
 import optuna
-import yaml
 
 from omegaconf import DictConfig
 from bbrl.utils.chrono import Chrono
@@ -26,6 +24,7 @@ from bbrl_algos.models.critics import ContinuousQAgent
 from bbrl_algos.models.shared_models import soft_update_params
 from bbrl_algos.models.exploration_agents import AddGaussianNoise
 from bbrl_algos.models.envs import get_env_agents
+from bbrl_algos.models.hyper_params import launch_optuna
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -295,29 +294,6 @@ def run_td3(cfg, logger, trial=None):
 
 
 # %%
-def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
-    # code suivant assez moche, certes, piste d’amélioration possible
-    suggest_type = cfg["suggest_type"]
-    args = cfg.keys() - ["suggest_type"]
-    args_str = ", ".join([f"{arg}={cfg[arg]}" for arg in args])
-    return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
-
-
-def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
-    for variable_name in cfg.keys():
-        if type(cfg[variable_name]) != DictConfig:
-            continue
-        else:
-            if "suggest_type" in cfg[variable_name].keys():
-                cfg[variable_name] = get_trial_value(
-                    trial, cfg[variable_name], variable_name
-                )
-            else:
-                cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
-    return cfg
-
-
-# %%
 @hydra.main(
     config_path="configs/",
     # config_name="td3_cartpolecontinuous.yaml"
@@ -327,30 +303,7 @@ def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     if "optuna" in cfg_raw:
-        cfg_optuna = cfg_raw.optuna
-
-        def objective(trial):
-            cfg_sampled = get_trial_config(trial, cfg_raw.copy())
-
-            logger = Logger(cfg_sampled)
-            try:
-                trial_result: float = run_td3(cfg_sampled, logger, trial)
-                logger.close()
-                return trial_result
-            except optuna.exceptions.TrialPruned:
-                logger.close(exit_code=1)
-                return float("-inf")
-
-        # study = optuna.create_study(**cfg_optuna.study)
-        study = optuna.create_study(
-            pruner=optuna.pruners.MedianPruner(), direction="maximize"
-        )
-        study.optimize(func=objective, **cfg_optuna.optimize)
-
-        file = open("best_params.yaml", "w")
-        yaml.dump(study.best_params, file)
-        file.close()
-
+        launch_optuna(cfg_raw, run_td3)
     else:
         logger = Logger(cfg_raw)
         run_td3(cfg_raw, logger)

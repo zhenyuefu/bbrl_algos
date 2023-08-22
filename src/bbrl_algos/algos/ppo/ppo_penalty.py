@@ -16,7 +16,6 @@ import torch.nn as nn
 import gym
 import bbrl_gymnasium
 import optuna
-import yaml
 import hydra
 
 # from tqdm.auto import tqdm
@@ -27,7 +26,7 @@ from bbrl import get_arguments, get_class
 
 from bbrl.utils.functional import gae
 
-from bbrl_algos.models.loggers import MyLogger, Logger, log_losses, log_reward_losses
+from bbrl_algos.models.loggers import Logger
 from bbrl.utils.chrono import Chrono
 
 # The workspace is the main class in BBRL, this is where all data is collected and stored
@@ -44,6 +43,7 @@ from bbrl.agents import Agents, TemporalAgent
 # ... When called at timestep t=0, then the environments are automatically reset.
 # At timestep t>0, these agents will read the ’action’ variable in the workspace at time t − 1
 from bbrl_algos.models.envs import get_env_agents
+from bbrl_algos.models.hyper_params import launch_optuna
 
 # Neural network models for policys and critics
 from bbrl_algos.models.stochastic_actors import (
@@ -290,7 +290,7 @@ def run_ppo_penalty(trial, cfg, logger):
             loss_entropy = -cfg.algorithm.entropy_coef * entropy_loss
 
             # Store the losses for tensorboard display
-            log_losses(logger, critic_loss, entropy_loss, policy_loss, nb_steps)
+            logger.log_losses(critic_loss, entropy_loss, policy_loss, nb_steps)
             logger.add_log("advantage", advantage.mean(), nb_steps)
 
             loss = loss_policy + loss_entropy
@@ -319,7 +319,7 @@ def run_ppo_penalty(trial, cfg, logger):
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
 
-            log_reward_losses(logger, rewards, nb_steps)
+            logger.log_reward_losses(rewards, nb_steps)
             print(
                 f"nb_steps: {nb_steps}, reward: {mean:.3f}, best_reward: {best_reward:.3f}"
             )
@@ -354,6 +354,12 @@ def run_ppo_penalty(trial, cfg, logger):
                             best_reward,
                         )
 
+            if trial is not None:
+                trial.report(mean, nb_steps)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+    return mean
+
 
 @hydra.main(
     config_path="./configs/",
@@ -365,12 +371,14 @@ def run_ppo_penalty(trial, cfg, logger):
     # config_name="ppo_cartpole_continuous.yaml",
     # version_base="1.1",
 )
-def main(cfg: DictConfig):
-    # print(OmegaConf.to_yaml(cfg))
-    torch.manual_seed(cfg.algorithm.seed)
-    # 1)  Build the  logger
-    logger = Logger(cfg)
-    run_ppo_penalty(None, cfg, logger)
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
+
+    if "optuna" in cfg_raw:
+        launch_optuna(cfg_raw, run_ppo_penalty)
+    else:
+        logger = Logger(cfg_raw)
+        run_ppo_penalty(cfg_raw, logger)
 
 
 if __name__ == "__main__":
