@@ -58,7 +58,10 @@ def create_ddpg_agent(cfg, train_env_agent, eval_env_agent):
         seed=cfg.algorithm.seed.act,
     )
     # target_actor = copy.deepcopy(actor)
-    noise_agent = AddGaussianNoise(cfg.algorithm.action_noise)
+    noise_agent = AddGaussianNoise(
+        cfg.algorithm.action_noise,
+        seed=cfg.algorithm.seed.explorer,
+    )
     tr_agent = Agents(train_env_agent, actor, noise_agent)  # TODO : add OU noise
     ev_agent = Agents(eval_env_agent, actor)
 

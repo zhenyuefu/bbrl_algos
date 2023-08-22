@@ -79,6 +79,7 @@ def create_ppo_agent(cfg, train_env_agent, eval_env_agent):
         cfg.algorithm.architecture.policy_hidden_size,
         act_size,
         name="current_policy",
+        seed=cfg.algorithm.seed.policy,
     )
     tr_agent = Agents(train_env_agent, policy)
     ev_agent = Agents(eval_env_agent, policy)
@@ -139,7 +140,7 @@ def compute_clip_policy_loss(cfg, advantage, ratio):
     return policy_loss
 
 
-def run_ppo_clip(trial, cfg, logger):
+def run_ppo_clip(cfg, logger, trial=None):
     best_reward = float("-inf")
     nb_steps = 0
     tmp_steps = 0
@@ -164,12 +165,12 @@ def run_ppo_clip(trial, cfg, logger):
     optimizer = setup_optimizer(cfg, train_agent, critic_agent)
 
     # Training loop
-    for epoch in range(cfg.algorithm.max_epochs):
+    while nb_steps < cfg.algorithm.n_steps:
         # Execute the training agent in the workspace
 
         # Handles continuation
         delta_t = 0
-        if epoch > 0:
+        if nb_steps > 0:
             train_workspace.zero_grad()
             delta_t = 1
             train_workspace.copy_n_last_steps(1)

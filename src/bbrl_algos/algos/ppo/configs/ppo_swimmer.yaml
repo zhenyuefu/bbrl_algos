@@ -8,15 +8,19 @@
             every_n_seconds: 10
 
       algorithm:
-            seed: 1
-            nb_seeds: 1
+            seed:
+                  train: 335
+                  eval: 983
+                  policy: 123
+                  torch: 789
+
             max_grad_norm: 0.9
             n_envs: 8
-            n_steps: 256
+            n_steps_train: 256
+            n_steps: 70000
             eval_interval: 4000
             nb_evals: 10
             gae: 0.99
-            max_epochs: 10000
             discount_factor: 0.999999
             opt_epochs: 3
             batch_size: 16

@@ -40,7 +40,10 @@ matplotlib.use("TkAgg")
 def create_td3_agent(cfg, train_env_agent, eval_env_agent):
     obs_size, act_size = train_env_agent.get_obs_and_actions_sizes()
     actor = ContinuousDeterministicActor(
-        obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size
+        obs_size,
+        cfg.algorithm.architecture.actor_hidden_size,
+        act_size,
+        seed=cfg.algorithm.seed.act,
     )
     # target_actor = copy.deepcopy(actor)
     noise_agent = AddGaussianNoise(cfg.algorithm.action_noise)
@@ -48,7 +51,10 @@ def create_td3_agent(cfg, train_env_agent, eval_env_agent):
     ev_agent = Agents(eval_env_agent, actor)
 
     critic_1 = ContinuousQAgent(
-        obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
+        obs_size,
+        cfg.algorithm.architecture.critic_hidden_size,
+        act_size,
+        seed=cfg.algorithm.seed.q,
     )
     target_critic_1 = copy.deepcopy(critic_1).set_name("target-critic1")
     critic_2 = ContinuousQAgent(

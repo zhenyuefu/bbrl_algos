@@ -23,8 +23,8 @@ class ActorAgent(TimeAgent, SeedableAgent, SerializableAgent):
     or with argmax if false.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def forward(self, t, stochastic, **kwargs):
         probs = self.get(("action_probs", t))
@@ -37,8 +37,8 @@ class ActorAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class BernoulliActor(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, state_dim, hidden_layers):
-        super().__init__()
+    def __init__(self, state_dim, hidden_layers, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [1]
         self.model = build_mlp(
             layers, activation=nn.ReLU(), output_activation=nn.Sigmoid()
@@ -71,8 +71,8 @@ class BernoulliActor(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class ProbAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self, state_dim, hidden_layers, n_action):
-        super().__init__(name="prob_agent")
+    def __init__(self, state_dim, hidden_layers, n_action, *args, **kwargs):
+        super().__init__(name="prob_agent", *args, **kwargs)
         self.model = build_mlp(
             [state_dim] + list(hidden_layers) + [n_action], activation=nn.Tanh()
         )
@@ -88,8 +88,8 @@ class ProbAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class ActionAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def forward(self, t, stochastic, **kwargs):
         probs = self.get(("action_probs", t))
@@ -102,8 +102,10 @@ class ActionAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class DiscreteActor(BaseActor):
-    def __init__(self, state_dim, hidden_size, n_actions, name="policy"):
-        super().__init__()
+    def __init__(
+        self, state_dim, hidden_size, n_actions, name="policy", *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
         self.model = build_mlp(
             [state_dim] + list(hidden_size) + [n_actions], activation=nn.ReLU()
         )
@@ -207,7 +209,9 @@ class StochasticActor(BaseActor):
 
 
 class TunableVarianceContinuousActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+    def __init__(
+        self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs
+    ):
         super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(layers, activation=nn.ReLU())
@@ -227,7 +231,9 @@ class TunableVarianceContinuousActorExp(StochasticActor):
     we exponentiate it
     """
 
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+    def __init__(
+        self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs
+    ):
         super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(layers, activation=nn.Tanh())
@@ -240,7 +246,9 @@ class TunableVarianceContinuousActorExp(StochasticActor):
 
 
 class StateDependentVarianceContinuousActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+    def __init__(
+        self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs
+    ):
         super().__init__(name, *args, **kwargs)
         backbone_dim = [state_dim] + list(hidden_layers)
         self.layers = build_backbone(backbone_dim, activation=nn.Tanh())
@@ -258,7 +266,9 @@ class StateDependentVarianceContinuousActor(StochasticActor):
 
 
 class ConstantVarianceContinuousActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+    def __init__(
+        self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs
+    ):
         super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(layers, activation=nn.Tanh())
@@ -270,7 +280,9 @@ class ConstantVarianceContinuousActor(StochasticActor):
 
 
 class SquashedGaussianActor(StochasticActor):
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+    def __init__(
+        self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs
+    ):
         super().__init__(name, *args, **kwargs)
         backbone_dim = [state_dim] + list(hidden_layers)
         self.layers = build_backbone(backbone_dim, activation=nn.Tanh())
@@ -298,7 +310,9 @@ class TunableVariancePPOActor(StochasticActor):
     The official PPO actor uses Tanh activation functions and orthogonal initialization
     """
 
-    def __init__(self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs):
+    def __init__(
+        self, state_dim, hidden_layers, action_dim, name="policy", *args, **kwargs
+    ):
         super().__init__(name, *args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_ortho_mlp(layers, activation=nn.Tanh())
