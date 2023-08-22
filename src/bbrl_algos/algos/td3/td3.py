@@ -251,6 +251,10 @@ def run_td3(cfg, logger, trial=None):
 
             mean = rewards.mean()
             logger.log_reward_losses(rewards, nb_steps)
+
+            if mean > best_reward:
+                best_reward = mean
+
             print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
 
             if trial is not None:
@@ -258,8 +262,7 @@ def run_td3(cfg, logger, trial=None):
                 if trial.should_prune():
                     raise optuna.TrialPruned()
 
-            if cfg.save_best and mean > best_reward:
-                best_reward = mean
+            if cfg.save_best and best_reward == mean:
                 directory = "./td3_agent/"
                 if not os.path.exists(directory):
                     os.makedirs(directory)
@@ -288,7 +291,7 @@ def run_td3(cfg, logger, trial=None):
                         cfg.gym_env.env_name,
                         nb_steps,
                     )
-    return mean
+    return best_reward
 
 
 # %%
@@ -336,8 +339,12 @@ def main(cfg_raw: DictConfig):
                 return trial_result
             except optuna.exceptions.TrialPruned:
                 logger.close(exit_code=1)
+                return float("-inf")
 
-        study = optuna.create_study(**cfg_optuna.study)
+        # study = optuna.create_study(**cfg_optuna.study)
+        study = optuna.create_study(
+            pruner=optuna.pruners.MedianPruner(), direction="maximize"
+        )
         study.optimize(func=objective, **cfg_optuna.optimize)
 
         file = open("best_params.yaml", "w")

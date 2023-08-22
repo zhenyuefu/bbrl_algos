@@ -12,6 +12,8 @@
       study:
         study_name: ddpg_pendulum
         direction: maximize
+        pruner: 
+          classname: optuna.pruners.MedianPruner
       optimize:
         n_trials: 10000
         timeout: 3600
