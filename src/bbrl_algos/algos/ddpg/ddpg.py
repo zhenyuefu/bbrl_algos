@@ -9,6 +9,7 @@ import gym
 import bbrl_gymnasium
 import hydra
 import optuna
+import yaml
 
 from omegaconf import DictConfig
 from bbrl import get_arguments, get_class
@@ -300,6 +301,10 @@ def main(cfg_raw: DictConfig):
 
         study = optuna.create_study(**cfg_optuna.study)
         study.optimize(func=objective, **cfg_optuna.optimize)
+
+        file = open("best_params.yaml", "w")
+        yaml.dump(study.best_params, file)
+        file.close()
 
     else:
         logger = Logger(cfg_raw)

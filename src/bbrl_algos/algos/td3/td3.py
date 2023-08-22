@@ -9,6 +9,7 @@ import gym
 import bbrl_gymnasium
 import hydra
 import optuna
+import yaml
 
 from omegaconf import DictConfig
 from bbrl.utils.chrono import Chrono
@@ -199,7 +200,7 @@ def run_td3(cfg, logger, trial=None):
                 logger.add_log("critic_loss_2", critic_loss_2, nb_steps)
                 critic_loss = critic_loss_1 + critic_loss_2
 
-                # Critic update part ############################################################
+                # Critic update part #
                 critic_optimizer.zero_grad()
                 critic_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
@@ -222,7 +223,7 @@ def run_td3(cfg, logger, trial=None):
                 actor_loss = compute_actor_loss(current_q_values)
                 logger.add_log("actor_loss", actor_loss, nb_steps)
 
-                # Actor update part ###################################################################
+                # Actor update part #
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
                 torch.nn.utils.clip_grad_norm_(
@@ -315,7 +316,9 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 
 # %%
 @hydra.main(
-    config_path="configs/", config_name="ddpg_cartpole.yaml"
+    config_path="configs/",
+    # config_name="td3_cartpolecontinuous.yaml"
+    config_name="td3_pendulum_optuna.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
@@ -336,6 +339,10 @@ def main(cfg_raw: DictConfig):
 
         study = optuna.create_study(**cfg_optuna.study)
         study.optimize(func=objective, **cfg_optuna.optimize)
+
+        file = open("best_params.yaml", "w")
+        yaml.dump(study.best_params, file)
+        file.close()
 
     else:
         logger = Logger(cfg_raw)

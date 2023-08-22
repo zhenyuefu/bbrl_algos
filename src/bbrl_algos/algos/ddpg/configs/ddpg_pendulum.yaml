@@ -8,11 +8,20 @@
       run:
         dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
+    optuna:
+      study:
+        study_name: ddpg_pendulum
+        direction: maximize
+      optimize:
+        n_trials: 20
+        timeout: 600
+        n_jobs: 1
+
     logger:
       classname: bbrl.utils.logger.WandbLogger
       project: "ddpg_study"
-      group: "tune_ddpg"
-      tags: "hp_ddpg"
+      group: "tune_ddpg_pendulum"
+      tags: "hp_ddpg_pendulum"
       job_type: test
       log_dir: ${log_dir}
       cache_size: 10000
@@ -29,7 +38,6 @@
         explorer: 4
         torch: 7
 
-      nb_seeds: 1
       max_grad_norm: 0.5
       optim_n_updates: 3
       n_envs: 1
