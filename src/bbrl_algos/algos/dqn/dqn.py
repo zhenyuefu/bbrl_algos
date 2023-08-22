@@ -10,6 +10,7 @@ from typing import Callable, List
 
 import hydra
 import optuna
+import yaml
 from omegaconf import DictConfig
 
 # %%
@@ -35,7 +36,7 @@ from bbrl_algos.models.loggers import Logger
 
 # %%
 def compute_critic_loss(
-    discount_factor, reward, must_bootstrap, action, q_values, q_target=None
+        discount_factor, reward, must_bootstrap, action, q_values, q_target=None
 ):
     """Compute critic loss
     Args:
@@ -60,16 +61,16 @@ def compute_critic_loss(
 
 # %%
 def make_wrappers(
-    autoreset: bool,
+        autoreset: bool,
 ) -> List[Callable[[Env], Env]]:
     return [AutoResetWrapper] if autoreset else []
 
 
 # %%
 def make_env(
-    identifier: str,
-    autoreset: bool,
-    **kwargs,
+        identifier: str,
+        autoreset: bool,
+        **kwargs,
 ) -> Env:
     env: Env = gym.make(id=identifier, **kwargs)
     wrappers = make_wrappers(
@@ -241,7 +242,6 @@ def run_dqn(cfg, logger, trial=None):
             logger.add_log("replay_buffer_size", replay_buffer.size(), nb_steps)
 
             if replay_buffer.size() > cfg.algorithm.buffer.learning_starts:
-
                 # Compute critic loss
                 critic_loss = compute_critic_loss(
                     cfg.algorithm.discount_factor,
@@ -264,8 +264,8 @@ def run_dqn(cfg, logger, trial=None):
 
         # Update the target network
         if (
-            nb_steps - tmp_steps_target_update
-            > cfg.algorithm.target_critic_update_interval
+                nb_steps - tmp_steps_target_update
+                > cfg.algorithm.target_critic_update_interval
         ):
             tmp_steps_target_update = nb_steps
             q_agent_target.agent = copy.deepcopy(q_agent.agent)
@@ -318,7 +318,7 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 
 # %%
 @hydra.main(
-    config_path="configs/", config_name="cartpole_wandb_optuna.yaml"
+    config_path="configs/", config_name="cartpole_wandb_optuna_choices.yaml"
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
@@ -339,6 +339,11 @@ def main(cfg_raw: DictConfig):
 
         study = optuna.create_study(**cfg_optuna.study)
         study.optimize(func=objective, **cfg_optuna.optimize)
+
+        file = open("best_params.yaml", "w")
+        yaml.dump(study.best_params, file)
+        file.close()
+
 
     else:
         logger = Logger(cfg_raw)
