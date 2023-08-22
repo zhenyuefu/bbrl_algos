@@ -17,7 +17,7 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent
 
-from bbrl_algos.models.loggers import MyLogger, Logger
+from bbrl_algos.models.loggers import Logger
 from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.stochastic_actors import (
@@ -203,7 +203,7 @@ def compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace):
     return actor_loss.mean()
 
 
-def run_sac(trial, cfg, logger):
+def run_sac(cfg, logger, trial=None):
     best_reward = float("-inf")
     ent_coef = cfg.algorithm.entropy_coef
 
@@ -243,15 +243,15 @@ def run_sac(trial, cfg, logger):
         target_entropy = cfg.algorithm.target_entropy
 
     # Training loop
-    for epoch in range(cfg.algorithm.max_epochs):
+    while nb_steps < cfg.algorithm.n_steps:
         # Execute the agent in the workspace
-        if epoch > 0:
+        if nb_steps > 0:
             train_workspace.zero_grad()
             train_workspace.copy_n_last_steps(1)
             train_agent(
                 train_workspace,
                 t=1,
-                n_steps=cfg.algorithm.n_steps - 1,
+                n_steps=cfg.algorithm.n_steps,
                 stochastic=True,
             )
         else:

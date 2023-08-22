@@ -9,10 +9,17 @@
             every_n_seconds: 10
 
       algorithm:
-            seed: 1
+            
+            seed:
+                  train: 335
+                  eval: 983
+                  q: 123
+                  explorer: 456
+                  torch: 789
+
             n_envs: 8
             n_steps_train: 32
-            n_steps: 70000
+            n_steps: 300_000
             eval_interval: 5000
             nb_evals: 10
             buffer_size: 1e6
