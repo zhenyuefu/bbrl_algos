@@ -1,16 +1,9 @@
-import sys
-import os
-import torch
-
-import hydra
 import optuna
 import yaml
 
 from omegaconf import DictConfig
 from bbrl import get_arguments, get_class
 from bbrl_algos.models.loggers import Logger
-
-from bbrl_algos.models.algos.ddpg import run_ddpg
 
 
 # %%
@@ -38,7 +31,7 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 def launch_optuna(cfg_raw, run_func):
     cfg_optuna = cfg_raw.optuna
 
-    def objective(trial, cfg_raw):
+    def objective(trial):
         cfg_sampled = get_trial_config(trial, cfg_raw.copy())
 
         logger = Logger(cfg_sampled)
@@ -59,26 +52,3 @@ def launch_optuna(cfg_raw, run_func):
     file = open("best_params.yaml", "w")
     yaml.dump(study.best_params, file)
     file.close()
-
-
-# la partie ci-dessous sera dans le fichier de chaque algo ------------
-
-# %%
-@hydra.main(
-    config_path="configs/",
-    # config_name="ddpg_cartpole.yaml"
-    # config_name="ddpg_pendulum.yaml",
-    config_name="ddpg_pendulum_optuna.yaml",
-)  # , version_base="1.3")
-def main(cfg_raw: DictConfig):
-    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
-
-    if "optuna" in cfg_raw:
-        launch_optuna(cfg_raw, run_ddpg)
-    else:
-        logger = Logger(cfg_raw)
-        run_ddpg(cfg_raw, logger)
-
-
-if __name__ == "__main__":
-    main()
