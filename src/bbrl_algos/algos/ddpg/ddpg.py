@@ -49,7 +49,7 @@ def create_ddpg_agent(cfg, train_env_agent, eval_env_agent):
         act_size,
         seed=cfg.algorithm.seed.q,
     )
-    target_critic = copy.deepcopy(critic)
+    target_critic = copy.deepcopy(critic).set_name("target-critic")
     actor = ContinuousDeterministicActor(
         obs_size,
         cfg.algorithm.architecture.actor_hidden_size,
@@ -87,9 +87,6 @@ def setup_optimizers(cfg, actor, critic):
 def compute_critic_loss(cfg, reward, must_bootstrap, q_values, target_q_values):
     # Compute temporal difference
     q_next = target_q_values
-    # print("reward", reward[:-1][0])
-    # print("mb", must_bootstrap.int())
-    # print("q_next", q_next.squeeze(-1))
     target = (
         reward[:-1].squeeze()
         + cfg.algorithm.discount_factor * q_next.squeeze(-1) * must_bootstrap.int()
@@ -216,7 +213,7 @@ def run_ddpg(cfg, logger, trial=None):
 
             rewards = eval_workspace["env/cumulated_reward"][-1]
             q_agent(eval_workspace, t=0, stop_variable="env/done")
-            q_values = eval_workspace["q_value"].squeeze()
+            q_values = eval_workspace["critic/q_value"].squeeze()
             delta = q_values - rewards
             maxi_delta = delta.max(axis=0)[0].detach().numpy()
             delta_list.append(maxi_delta)

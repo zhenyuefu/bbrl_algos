@@ -50,11 +50,11 @@ def create_td3_agent(cfg, train_env_agent, eval_env_agent):
     critic_1 = ContinuousQAgent(
         obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
     )
-    target_critic_1 = copy.deepcopy(critic_1)
+    target_critic_1 = copy.deepcopy(critic_1).set_name("target-critic1")
     critic_2 = ContinuousQAgent(
         obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
     )
-    target_critic_2 = copy.deepcopy(critic_2)
+    target_critic_2 = copy.deepcopy(critic_2).set_name("target-critic2")
 
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
@@ -172,18 +172,18 @@ def run_td3(cfg, logger, trial=None):
                 # Critic update
                 # compute q_values: at t, we have Q(s,a) from the (s,a) in the RB
                 q_agent_1(rb_workspace, t=0, n_steps=1)
-                q_values_rb_1 = rb_workspace["q_value"]
+                q_values_rb_1 = rb_workspace["critic/q_value"]
                 q_agent_2(rb_workspace, t=0, n_steps=1)
-                q_values_rb_2 = rb_workspace["q_value"]
+                q_values_rb_2 = rb_workspace["critic/q_value"]
 
                 with torch.no_grad():
                     # replace the action at t+1 in the RB with \pi(s_{t+1}), to compute Q(s_{t+1}, \pi(s_{t+1}) below
                     ag_actor(rb_workspace, t=1, n_steps=1)
                     # compute q_values: at t+1 we have Q(s_{t+1}, \pi(s_{t+1})
                     target_q_agent_1(rb_workspace, t=1, n_steps=1)
-                    post_q_values_1 = rb_workspace["q_value"]
+                    post_q_values_1 = rb_workspace["target-critic1/q_value"]
                     target_q_agent_2(rb_workspace, t=1, n_steps=1)
-                    post_q_values_2 = rb_workspace["q_value"]
+                    post_q_values_2 = rb_workspace["target-critic2/q_value"]
 
                 post_q_values = torch.min(post_q_values_1, post_q_values_2).squeeze(-1)
                 # Compute critic loss
@@ -217,11 +217,8 @@ def run_td3(cfg, logger, trial=None):
                 # We arbitrarily chose to update the actor with respect to critic_1
                 # and we back-propagate the corresponding loss to maximize the Q values
                 q_agent_1(rb_workspace, t=0, n_steps=1)
-                q_values_1 = rb_workspace["q_value"]
-                # q_agent_2(rb_workspace, t=0, n_steps=1)
-                # q_values_2 = rb_workspace["q_value"]
+                q_values_1 = rb_workspace["critic/q_value"]
                 current_q_values = q_values_1.squeeze(-1)
-                # current_q_values = torch.min(q_values_1, q_values_2).squeeze(-1)
                 actor_loss = compute_actor_loss(current_q_values)
                 logger.add_log("actor_loss", actor_loss, nb_steps)
 
@@ -246,7 +243,7 @@ def run_td3(cfg, logger, trial=None):
 
             rewards = eval_workspace["env/cumulated_reward"][-1]
             q_agent_1(eval_workspace, t=0, stop_variable="env/done")
-            q_values = eval_workspace["q_value"].squeeze()
+            q_values = eval_workspace["critic/q_value"].squeeze()
             delta = q_values - rewards
             maxi_delta = delta.max(axis=0)[0].detach().numpy()
             delta_list.append(maxi_delta)
