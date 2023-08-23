@@ -10,8 +10,14 @@ hydra:
 
 optuna:
   study:
+    _target_: optuna.create_study
     study_name: dqn_vec
     direction: maximize
+    pruner:
+      _target_: optuna.pruners.MedianPruner
+      n_startup_trials: 5
+      n_warmup_steps: 5
+      interval_steps: 1
   optimize:
     n_trials: 10
     timeout: 600
