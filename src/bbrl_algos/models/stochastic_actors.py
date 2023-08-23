@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 
-from bbrl_examples.models.actors import BaseActor
+from bbrl_algos.models.actors import BaseActor
 from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 from torch.distributions.normal import Normal
 from torch.distributions import Bernoulli, Independent
 from bbrl.utils.distributions import SquashedDiagGaussianDistribution
 
-from bbrl_examples.models.shared_models import (
+from bbrl_algos.models.shared_models import (
     build_mlp,
     build_backbone,
     build_ortho_mlp,
