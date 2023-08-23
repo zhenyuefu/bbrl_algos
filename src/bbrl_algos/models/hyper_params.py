@@ -44,7 +44,6 @@ def launch_optuna(cfg_raw, run_func):
             logger.close(exit_code=1)
             return float("-inf")
 
-    # for a list of optuna pruners, this is here: https://optuna.readthedocs.io/en/stable/reference/pruners.html
     study = hydra.utils.call(cfg_optuna.study)
     study.optimize(func=objective, **cfg_optuna.optimize)
 
