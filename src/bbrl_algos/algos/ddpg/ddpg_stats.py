@@ -136,6 +136,7 @@ def run_ddpg(cfg, logger, trial=None):
     if not os.path.exists(directory):
         os.makedirs(directory)
     filename = directory + "ddpg.data"
+    stats_data = []
 
     # Training loop
     while nb_steps < cfg.algorithm.n_steps:
@@ -227,11 +228,11 @@ def run_ddpg(cfg, logger, trial=None):
                 best_reward = mean
 
             print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
-            # Ici, on ajoute les données correspondant aux 100 evals colonne par colonne
-            # my_data.add_colonne(rewards)
-            # puis dans le fichier, on veut écrire les données en ligne (une ligne = une suite d'evals)
-    # np.savetxt(filename, my_data)
-    print(filename)
+
+            stats_data.append(rewards.numpy())
+
+    np.savetxt(filename, np.concatenate(stats_data))
+
     return best_reward
 
 
