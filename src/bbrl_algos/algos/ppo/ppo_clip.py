@@ -185,7 +185,7 @@ def run_ppo_clip(cfg, logger, trial=None):
             train_agent(
                 train_workspace,
                 t=delta_t,
-                n_steps=cfg.algorithm.n_steps,
+                n_steps=cfg.algorithm.n_steps_train,
                 stochastic=True,
                 predict_proba=False,
                 compute_entropy=False,
@@ -193,7 +193,7 @@ def run_ppo_clip(cfg, logger, trial=None):
             old_policy(
                 train_workspace,
                 t=delta_t,
-                n_steps=cfg.algorithm.n_steps,
+                n_steps=cfg.algorithm.n_steps_train,
                 # Just computes the probability of the old policy's action
                 # to get the ratio of probabilities
                 predict_proba=True,
@@ -201,7 +201,7 @@ def run_ppo_clip(cfg, logger, trial=None):
             )
 
         # Compute the critic value over the whole workspace
-        critic_agent(train_workspace, t=delta_t, n_steps=cfg.algorithm.n_steps)
+        critic_agent(train_workspace, t=delta_t, n_steps=cfg.algorithm.n_steps_train)
 
         transition_workspace = train_workspace.get_transitions()
 
@@ -218,7 +218,7 @@ def run_ppo_clip(cfg, logger, trial=None):
 
         # the critic values are clamped to move not too far away from the values of the previous critic
         with torch.no_grad():
-            old_critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps)
+            old_critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps_train)
         old_v_value = transition_workspace["v_value"]
 
         if cfg.algorithm.clip_range_vf > 0:
@@ -370,9 +370,9 @@ def run_ppo_clip(cfg, logger, trial=None):
     # config_name="ppo_lunarlander_continuous.yaml",
     # config_name="ppo_lunarlander.yaml",
     # config_name="ppo_swimmer.yaml",
-    # config_name="ppo_pendulum.yaml",
+    config_name="ppo_pendulum.yaml",
     # config_name="ppo_cartpole.yaml",
-    config_name="ppo_single_state.yaml",
+    # config_name="ppo_single_state.yaml",
     # config_name="ppo_cartpole_continuous.yaml",
     # version_base="1.1",
 )
