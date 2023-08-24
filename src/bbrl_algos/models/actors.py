@@ -3,14 +3,13 @@ from abc import ABC
 import torch
 import torch.nn as nn
 
-from bbrl_examples.models.shared_models import build_mlp
+from bbrl_algos.models.shared_models import build_mlp
 from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
-
-from bbrl.agents.agent import Agent
 
 
 class BaseActor(TimeAgent, SeedableAgent, SerializableAgent, ABC):
     """Generic class to centralize copy_parameters"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -24,13 +23,13 @@ class DiscreteDeterministicActor(BaseActor):
     """This actor is assumed to have one output per action, and we take the action with the highest output"""
 
     def __init__(
-            self, 
-            state_dim, 
-            hidden_size, 
-            n_actions,
-            *args,
-            **kwargs,
-            ):
+        self,
+        state_dim,
+        hidden_size,
+        n_actions,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.model = build_mlp(
             [state_dim] + list(hidden_size) + [n_actions], activation=nn.ReLU()
@@ -57,13 +56,13 @@ class ContinuousDeterministicActor(BaseActor):
     """This actor outputs continuous actions"""
 
     def __init__(
-            self, 
-            state_dim, 
-            hidden_layers, 
-            action_dim,
-            *args,
-            **kwargs,
-            ):
+        self,
+        state_dim,
+        hidden_layers,
+        action_dim,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         layers = [state_dim] + list(hidden_layers) + [action_dim]
         self.model = build_mlp(

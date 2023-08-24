@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 from bbrl.visu.common import final_show
-from bbrl_examples.models.loggers import RewardLoader
+from bbrl_algos.models.loggers import RewardLoader
 
 
 def format_num(num, pos):

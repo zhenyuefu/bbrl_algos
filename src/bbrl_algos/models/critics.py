@@ -1,22 +1,20 @@
 import torch
 import torch.nn as nn
 
-from bbrl.agents.agent import Agent
-
-from bbrl_examples.models.shared_models import build_mlp, build_alt_mlp
+from bbrl_algos.models.shared_models import build_mlp, build_alt_mlp
 from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 
 class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(
-            self, 
-            state_dim, 
-            hidden_layers, 
-            action_dim, 
-            name="critic",
-            *args,
-            **kwargs,
-            ):
+        self,
+        state_dim,
+        hidden_layers,
+        action_dim,
+        name="critic",
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.is_q_function = True
         self.model = build_mlp(
@@ -45,12 +43,12 @@ class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 class VAgent(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(
-            self, 
-            state_dim, 
-            hidden_layers,
-            *args,
-            **kwargs,
-            ):
+        self,
+        state_dim,
+        hidden_layers,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.is_q_function = False
         self.model = build_mlp(
@@ -64,7 +62,6 @@ class VAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 
 class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
-    
     def __init__(
         self,
         state_dim,
@@ -103,14 +100,15 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
 
 class TruncatedQuantileNetwork(TimeAgent, SeedableAgent, SerializableAgent):
     def __init__(
-            self, 
-            state_dim, 
-            hidden_layers,
-            n_nets, action_dim,
-            n_quantiles,
-            *args,
-            **kwargs,
-            ):
+        self,
+        state_dim,
+        hidden_layers,
+        n_nets,
+        action_dim,
+        n_quantiles,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.is_q_function = True
         self.nets = []

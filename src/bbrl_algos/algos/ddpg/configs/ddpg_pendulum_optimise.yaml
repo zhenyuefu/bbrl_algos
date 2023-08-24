@@ -33,7 +33,7 @@
       optim_n_updates: 20
       n_envs: 1
       n_steps_train: 100
-      n_steps: 300_000
+      n_steps: 50_000
       buffer_size: 2e5
       batch_size: 128
       tau_target: 0.05
