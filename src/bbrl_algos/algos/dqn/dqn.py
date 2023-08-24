@@ -302,10 +302,10 @@ def run_dqn(cfg, logger, trial=None):
             if cfg.save_best and best_reward == mean:
                 save_best(
                     eval_agent,
-                    cfg.gym_env.env_name,
+                    cfg.gym_env_eval.identifier,
                     mean,
-                    "./ddpg_best_agents/",
-                    "ddpg",
+                    "./dqn_best_agents/",
+                    "dqn",
                 )
                 if cfg.plot_agents:
                     plot_critic(
@@ -313,7 +313,7 @@ def run_dqn(cfg, logger, trial=None):
                         eval_env_agent,
                         best_reward,
                         "./dqn_plots/",
-                        cfg.gym_env.env_name,
+                        cfg.gym_env_eval.identifier,
                     )
 
     return mean
@@ -321,7 +321,9 @@ def run_dqn(cfg, logger, trial=None):
 
 # %%
 @hydra.main(
-    config_path="configs/", config_name="cartpole_wandb_optuna_choices.yaml"
+    config_path="configs/",
+    config_name="cartpole_wandb_no_optuna.yaml",
+    # config_name="cartpole_wandb_optuna_choices.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)

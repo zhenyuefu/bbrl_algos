@@ -15,7 +15,7 @@ class EGreedyActionSelector(TimeAgent, SeedableAgent, SerializableAgent):
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_end)
 
     def forward(self, t, **kwargs):
-        q_values = self.get(("q_values", t))
+        q_values = self.get(("critic/q_values", t))
         nb_actions = q_values.size()[1]
         size = q_values.size()[0]
         # TODO: make it deterministic if seeded
@@ -33,7 +33,7 @@ class SoftmaxActionSelector(TimeAgent, SeedableAgent, SerializableAgent):
         self.temperature = temperature
 
     def forward(self, t, **kwargs):
-        q_values = self.get(("q_values", t))
+        q_values = self.get(("critic/q_values", t))
         probs = torch.softmax(q_values, dim=-1)
         action = torch.distributions.Categorical(probs).sample()
         self.set(("action", t), action)
