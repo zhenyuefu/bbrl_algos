@@ -5,7 +5,22 @@ from bbrl_algos.models.shared_models import build_mlp, build_alt_mlp
 from bbrl.agents import TimeAgent, SeedableAgent, SerializableAgent
 
 
-class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
+class NamedCritic(TimeAgent, SeedableAgent, SerializableAgent):
+    def __init__(
+        self,
+        name="critic",
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.name = name
+
+    def set_name(self, name: str):
+        self.name = name
+        return self
+
+
+class ContinuousQAgent(NamedCritic):
     def __init__(
         self,
         state_dim,
@@ -15,16 +30,11 @@ class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
-        self.is_q_function = True
+        super().__init__(name, *args, **kwargs)
         self.model = build_mlp(
             [state_dim + action_dim] + list(hidden_layers) + [1], activation=nn.ReLU()
         )
-        self.name = name
-
-    def set_name(self, name: str):
-        self.name = name
-        return self
+        self.is_q_function = True
 
     def forward(self, t, detach_actions=False):
         obs = self.get(("env/env_obs", t))
@@ -41,44 +51,48 @@ class ContinuousQAgent(TimeAgent, SeedableAgent, SerializableAgent):
         return q_value
 
 
-class VAgent(TimeAgent, SeedableAgent, SerializableAgent):
+class VAgent(NamedCritic):
     def __init__(
         self,
         state_dim,
         hidden_layers,
+        name="critic",
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(name, *args, **kwargs)
         self.is_q_function = False
         self.model = build_mlp(
             [state_dim] + list(hidden_layers) + [1], activation=nn.ReLU()
         )
+        self.is_q_function = False
 
     def forward(self, t, **kwargs):
         observation = self.get(("env/env_obs", t))
         critic = self.model(observation).squeeze(-1)
-        self.set(("v_value", t), critic)
+        self.set((f"{self.name}/v_value", t), critic)
 
 
-class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
+class DiscreteQAgent(NamedCritic):
     def __init__(
         self,
         state_dim,
         hidden_layers,
         action_dim,
+        name="critic",
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(name, *args, **kwargs)
         self.model = build_alt_mlp(
             [state_dim] + list(hidden_layers) + [action_dim], activation=nn.ReLU()
         )
+        self.is_q_function = True
 
     def forward(self, t, choose_action=True, **kwargs):
         obs = self.get(("env/env_obs", t))
         q_values = self.model(obs)
-        self.set(("q_values", t), q_values)
+        self.set((f"{self.name}/q_values", t), q_values)
         # Sets the action
         if choose_action:
             action = q_values.argmax(1)
@@ -98,7 +112,7 @@ class DiscreteQAgent(TimeAgent, SeedableAgent, SerializableAgent):
         return q_values[action[0].int()]
 
 
-class TruncatedQuantileNetwork(TimeAgent, SeedableAgent, SerializableAgent):
+class TruncatedQuantileNetwork(NamedCritic):
     def __init__(
         self,
         state_dim,
@@ -106,10 +120,11 @@ class TruncatedQuantileNetwork(TimeAgent, SeedableAgent, SerializableAgent):
         n_nets,
         action_dim,
         n_quantiles,
+        name="critic",
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(name, *args, **kwargs)
         self.is_q_function = True
         self.nets = []
         for i in range(n_nets):
@@ -119,13 +134,14 @@ class TruncatedQuantileNetwork(TimeAgent, SeedableAgent, SerializableAgent):
             )
             self.add_module(f"qf{i}", net)
             self.nets.append(net)
+        self.is_q_function = True
 
     def forward(self, t):
         obs = self.get(("env/env_obs", t))
         action = self.get(("action", t))
         obs_act = torch.cat((obs, action), dim=1)
         quantiles = torch.stack(tuple(net(obs_act) for net in self.nets), dim=1)
-        self.set(("quantiles", t), quantiles)
+        self.set((f"{self.name}/quantiles", t), quantiles)
         return quantiles
 
     def predict_value(self, obs, action):

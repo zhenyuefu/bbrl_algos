@@ -12,8 +12,12 @@
       study:
         study_name: ddpg_pendulum
         direction: maximize
-        pruner: 
-          classname: optuna.pruners.MedianPruner
+        # for a list of optuna pruners, this is here: https://optuna.readthedocs.io/en/stable/reference/pruners.html
+        pruner:
+          _target_: optuna.pruners.MedianPruner
+          n_startup_trials: 5
+          n_warmup_steps: 5
+          interval_steps: 1
       optimize:
         n_trials: 10000
         timeout: 3600

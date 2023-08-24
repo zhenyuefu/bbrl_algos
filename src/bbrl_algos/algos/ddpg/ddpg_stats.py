@@ -28,6 +28,7 @@ from bbrl_algos.models.plotters import Plotter
 from bbrl_algos.models.exploration_agents import AddGaussianNoise
 from bbrl_algos.models.envs import get_env_agents
 from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 # HYDRA_FULL_ERROR = 1
 import matplotlib
@@ -132,11 +133,12 @@ def run_ddpg(cfg, logger, trial=None):
     actor_optimizer, critic_optimizer = setup_optimizers(cfg, actor, critic)
     nb_steps = 0
     tmp_steps = 0
-    directory = "./ddpg_data/"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    filename = directory + "ddpg.data"
-    stats_data = []
+    if cfg.collect_stats:
+        directory = "./ddpg_data/"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        filename = directory + "ddpg.data"
+        stats_data = []
 
     # Training loop
     while nb_steps < cfg.algorithm.n_steps:
@@ -229,9 +231,20 @@ def run_ddpg(cfg, logger, trial=None):
 
             print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
 
-            stats_data.append(rewards.numpy())
+            if cfg.save_best and best_reward == mean:
+                save_best(
+                    eval_agent,
+                    cfg.gym_env.env_name,
+                    mean,
+                    "./ddpg_best_agents/",
+                    "ddpg",
+                )
 
-    np.savetxt(filename, np.concatenate(stats_data))
+            if cfg.collect_stats:
+                stats_data.append(rewards.numpy())
+
+    if cfg.collect_stats:
+        np.savetxt(filename, np.concatenate(stats_data))
 
     return best_reward
 

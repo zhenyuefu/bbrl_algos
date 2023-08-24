@@ -57,6 +57,7 @@ from bbrl_algos.models.stochastic_actors import (
 )
 from bbrl_algos.models.critics import VAgent
 from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 # Used to display a policy and a critic as a 2D map
 from bbrl.visu.plot_policies import plot_policy
@@ -329,34 +330,28 @@ def run_ppo_clip(cfg, logger, trial=None):
             )
             if mean > best_reward:
                 best_reward = mean
-                if cfg.save_best:
-                    directory = f"./ppo_agent/{cfg.gym_env.env_name}/"
-                    if not os.path.exists(directory):
-                        os.makedirs(directory)
-                    filename = (
-                        directory
-                        + cfg.gym_env.env_name
-                        + "#ppo_penalty#team#"
-                        + str(mean.item())
-                        + ".agt"
+
+            if cfg.save_best and best_reward == mean:
+                save_best(
+                    policy, cfg.gym_env.env_name, mean, "./ppo_best_agents/", "ppo"
+                )
+
+                if cfg.plot_agents:
+                    plot_policy(
+                        eval_agent.agent.agents[1],
+                        eval_env_agent,
+                        best_reward,
+                        "./ppo_plots/",
+                        cfg.gym_env.env_name,
+                        stochastic=False,
                     )
-                    policy.save_model(filename)
-                    if cfg.plot_agents:
-                        plot_policy(
-                            eval_agent.agent.agents[1],
-                            eval_env_agent,
-                            "./ppo_plots/",
-                            cfg.gym_env.env_name,
-                            best_reward,
-                            stochastic=False,
-                        )
-                        plot_critic(
-                            critic_agent.agent,
-                            eval_env_agent,
-                            "./ppo_plots/",
-                            cfg.gym_env.env_name,
-                            best_reward,
-                        )
+                    plot_critic(
+                        critic_agent.agent,
+                        eval_env_agent,
+                        best_reward,
+                        "./ppo_plots/",
+                        cfg.gym_env.env_name,
+                    )
 
             if trial is not None:
                 trial.report(mean, nb_steps)

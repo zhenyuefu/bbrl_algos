@@ -44,6 +44,7 @@ from bbrl.agents import Agents, TemporalAgent
 # At timestep t>0, these agents will read the ’action’ variable in the workspace at time t − 1
 from bbrl_algos.models.envs import get_env_agents
 from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 # Neural network models for policys and critics
 from bbrl_algos.models.stochastic_actors import (
@@ -326,34 +327,28 @@ def run_ppo_penalty(cfg, logger, trial=None):
             )
             if mean > best_reward:
                 best_reward = mean
-                if cfg.save_best:
-                    directory = f"./ppo_agent/{cfg.gym_env.env_name}/"
-                    if not os.path.exists(directory):
-                        os.makedirs(directory)
-                    filename = (
-                        directory
-                        + cfg.gym_env.env_name
-                        + "#ppo_penalty#team#"
-                        + str(mean.item())
-                        + ".agt"
+
+            if cfg.save_best and best_reward == mean:
+                save_best(
+                    policy, cfg.gym_env.env_name, mean, "./ppo_best_agents/", "ppo"
+                )
+
+                if cfg.plot_agents:
+                    plot_policy(
+                        eval_agent.agent.agents[1],
+                        eval_env_agent,
+                        best_reward,
+                        "./ppo_plots/",
+                        cfg.gym_env.env_name,
+                        stochastic=False,
                     )
-                    policy.save_model(filename)
-                    if cfg.plot_agents:
-                        plot_policy(
-                            eval_agent.agent.agents[1],
-                            eval_env_agent,
-                            "./ppo_plots/",
-                            cfg.gym_env.env_name,
-                            best_reward,
-                            stochastic=False,
-                        )
-                        plot_critic(
-                            critic_agent.agent,
-                            eval_env_agent,
-                            "./ppo_plots/",
-                            cfg.gym_env.env_name,
-                            best_reward,
-                        )
+                    plot_critic(
+                        critic_agent.agent,
+                        eval_env_agent,
+                        best_reward,
+                        "./ppo_plots/",
+                        cfg.gym_env.env_name,
+                    )
 
             if trial is not None:
                 trial.report(mean, nb_steps)

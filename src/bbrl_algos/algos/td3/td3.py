@@ -25,6 +25,7 @@ from bbrl_algos.models.shared_models import soft_update_params
 from bbrl_algos.models.exploration_agents import AddGaussianNoise
 from bbrl_algos.models.envs import get_env_agents
 from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -268,17 +269,9 @@ def run_td3(cfg, logger, trial=None):
                     raise optuna.TrialPruned()
 
             if cfg.save_best and best_reward == mean:
-                directory = "./td3_agent/"
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                filename = (
-                    directory
-                    + cfg.gym_env.env_name
-                    + "#td3#T1_T2#"
-                    + str(mean.item())
-                    + ".agt"
+                save_best(
+                    eval_agent, cfg.gym_env.env_name, mean, "./td3_best_agents/", "td3"
                 )
-                eval_agent.save_model(filename)
 
                 if cfg.plot_agents:
                     plot_policy(

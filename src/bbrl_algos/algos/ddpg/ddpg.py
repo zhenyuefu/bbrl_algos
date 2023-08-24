@@ -28,6 +28,7 @@ from bbrl_algos.models.plotters import Plotter
 from bbrl_algos.models.exploration_agents import AddGaussianNoise
 from bbrl_algos.models.envs import get_env_agents
 from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 # HYDRA_FULL_ERROR = 1
 import matplotlib
@@ -245,17 +246,14 @@ def run_ddpg(cfg, logger, trial=None):
                     nb_steps,
                 )
             if cfg.save_best and best_reward == mean:
-                directory = "./ddpg_agent/"
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                filename = (
-                    directory
-                    + cfg.gym_env.env_name
-                    + "#ddpg#T1_T2#"
-                    + str(mean.item())
-                    + ".agt"
+                save_best(
+                    eval_agent,
+                    cfg.gym_env.env_name,
+                    mean,
+                    "./ddpg_best_agents/",
+                    "ddpg",
                 )
-                eval_agent.save_model(filename)
+
     return best_reward
 
 

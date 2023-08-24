@@ -1,7 +1,6 @@
 import numpy as np
 from random import randrange
-
-from bbrl.agents.agent import Agent
+import os
 
 
 def discrete_prob(p):
@@ -81,3 +80,10 @@ def compare(v, q, pol):
         return True
     else:
         return False
+
+
+def save_best(agent, env_name, score, dirname, fileroot):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        filename = dirname + env_name + fileroot + str(score.item()) + ".agt"
+        agent.save_model(filename)

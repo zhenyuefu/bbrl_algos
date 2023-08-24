@@ -28,6 +28,7 @@ from bbrl_algos.models.critics import ContinuousQAgent
 from bbrl_algos.models.shared_models import soft_update_params
 from bbrl_algos.models.envs import get_env_agents
 from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -349,12 +350,10 @@ def run_sac(cfg, logger, trial=None):
                 best_reward = mean
 
             print(f"nb steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
-            if cfg.save_best and mean == best_reward:
-                directory = f"./agents/{cfg.gym_env.env_name}/sac_agent/"
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                filename = directory + "sac_" + str(mean.item()) + ".agt"
-                actor.save_model(filename)
+            if cfg.save_best and best_reward == mean:
+                save_best(
+                    actor, cfg.gym_env.env_name, mean, "./sac_best_agents/", "sac"
+                )
 
     return best_reward
 

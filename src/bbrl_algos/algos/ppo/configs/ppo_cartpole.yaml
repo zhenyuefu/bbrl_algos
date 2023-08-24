@@ -1,5 +1,6 @@
-      save_best: False
-      plot_agents: False
+      save_best: True
+      plot_agents: True
+      collect_stats: False
 
       logger:
             classname: bbrl.utils.logger.TFLogger
