@@ -149,7 +149,7 @@ def run_a2c(cfg, logger, trial=None):
             "env/truncated",
             "env/reward",
             "action",
-            "action_logprobs",
+            "policy/action_logprobs",
         ]
 
         # Determines whether values of the critic should be propagated

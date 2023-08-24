@@ -32,6 +32,10 @@ from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
+
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 
 # %%
@@ -139,6 +143,8 @@ def setup_optimizer(optimizer_cfg, q_agent):
 
 # %%
 def run_dqn(cfg, logger, trial=None):
+    best_reward = float("-inf")
+
     # 1) Create the environment agent
     train_env_agent = ParallelGymAgent(
         make_env_fn=get_class(cfg.gym_env_train),
@@ -221,7 +227,7 @@ def run_dqn(cfg, logger, trial=None):
             q_agent(sampled_trans_ws, t=0, n_steps=2, choose_action=False)
 
             q_values, terminated, truncated, reward, action = sampled_trans_ws[
-                "q_values",
+                "critic/q_values",
                 "env/terminated",
                 "env/truncated",
                 "env/reward",
@@ -232,7 +238,7 @@ def run_dqn(cfg, logger, trial=None):
                 q_agent_target(sampled_trans_ws, t=0, n_steps=2)
 
             # Compute the target q values
-            q_target = sampled_trans_ws["q_values"]
+            q_target = sampled_trans_ws["critic/q_values"]
 
             # Determines whether values of the critic should be propagated
             # True if the episode reached a time limit or if the task was not terminated.
@@ -283,12 +289,32 @@ def run_dqn(cfg, logger, trial=None):
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
 
+            if mean > best_reward:
+                best_reward = mean
+
             logger.log_reward_losses(rewards, nb_steps)
 
             if trial is not None:
                 trial.report(mean, nb_steps)
                 if trial.should_prune():
                     raise optuna.TrialPruned()
+
+            if cfg.save_best and best_reward == mean:
+                save_best(
+                    eval_agent,
+                    cfg.gym_env.env_name,
+                    mean,
+                    "./ddpg_best_agents/",
+                    "ddpg",
+                )
+                if cfg.plot_agents:
+                    plot_critic(
+                        eval_agent.agent.agents[1],
+                        eval_env_agent,
+                        best_reward,
+                        "./dqn_plots/",
+                        cfg.gym_env.env_name,
+                    )
 
     return mean
 

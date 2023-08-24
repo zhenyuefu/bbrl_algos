@@ -1,14 +1,15 @@
-    save_best: False
-    plot_agents: False
+save_best: True
+plot_agents: True
+collect_stats: False
 
-    log_dir: ./tmp
-    video_dir: ${log_dir}/videos
+log_dir: ./tmp
+video_dir: ${log_dir}/videos
 
-    hydra:
-      run:
-        dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+hydra:
+  run:
+    dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
-    logger:
+logger:
       classname: bbrl.utils.logger.WandbLogger
       project: "ddpg_study"
       group: "tune_ddpg"
@@ -19,7 +20,7 @@
       every_n_seconds: 10
       verbose: False
 
-    algorithm:
+algorithm:
 
       seed:
         train: 2
@@ -47,14 +48,14 @@
         actor_hidden_size: [64]
         critic_hidden_size: [64, 64, 64, 64]
 
-    gym_env:
+gym_env:
       classname: __main__.make_gym_env
       env_name: LunarLanderContinuous-v2
 
-    actor_optimizer:
+actor_optimizer:
       classname: torch.optim.Adam
       lr: 5e-4
 
-    critic_optimizer:
+critic_optimizer:
       classname: torch.optim.Adam
       lr: 2e-3

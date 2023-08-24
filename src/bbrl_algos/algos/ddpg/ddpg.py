@@ -19,9 +19,6 @@ from bbrl.utils.chrono import Chrono
 
 from bbrl_algos.models.loggers import Logger
 
-from bbrl.visu.plot_policies import plot_policy
-from bbrl.visu.plot_critics import plot_critic
-
 from bbrl_algos.models.actors import ContinuousDeterministicActor
 from bbrl_algos.models.critics import ContinuousQAgent
 from bbrl_algos.models.plotters import Plotter
@@ -29,6 +26,9 @@ from bbrl_algos.models.exploration_agents import AddGaussianNoise
 from bbrl_algos.models.envs import get_env_agents
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
+
+from bbrl.visu.plot_policies import plot_policy
+from bbrl.visu.plot_critics import plot_critic
 
 # HYDRA_FULL_ERROR = 1
 import matplotlib
@@ -106,7 +106,6 @@ def compute_actor_loss(q_values):
 
 
 def run_ddpg(cfg, logger, trial=None):
-    # 1)  Build the  logger
     best_reward = float("-inf")
 
     # 2) Create the environment agent
@@ -165,7 +164,7 @@ def run_ddpg(cfg, logger, trial=None):
                 # compute q_values: at t, we have Q(s,a) from the (s,a) in the RB
                 # the detach_actions=True changes nothing in the results
                 q_agent(rb_workspace, t=0, n_steps=1, detach_actions=True)
-                q_values = rb_workspace["critic/q_value"]
+                q_values = rb_workspace["critic/q_values"]
 
                 with torch.no_grad():
                     # replace the action at t+1 in the RB with \pi(s_{t+1}), to compute Q(s_{t+1}, \pi(s_{t+1}) below
@@ -174,7 +173,7 @@ def run_ddpg(cfg, logger, trial=None):
                     target_q_agent(rb_workspace, t=1, n_steps=1, detach_actions=True)
                     # q_agent(rb_workspace, t=1, n_steps=1)
                 # finally q_values contains the above collection at t=0 and t=1
-                post_q_values = rb_workspace["target-critic/q_value"]
+                post_q_values = rb_workspace["target-critic/q_values"]
 
                 # Compute critic loss
                 critic_loss = compute_critic_loss(
@@ -194,7 +193,7 @@ def run_ddpg(cfg, logger, trial=None):
                 # We determine the Q values resulting from actions of the current policy
                 q_agent(rb_workspace, t=0, n_steps=1)
                 # and we back-propagate the corresponding loss to maximize the Q values
-                q_values = rb_workspace["critic/q_value"]
+                q_values = rb_workspace["critic/q_values"]
                 actor_loss = compute_actor_loss(q_values)
                 logger.add_log("actor_loss", actor_loss, nb_steps)
                 # if -25 < actor_loss < 0 and nb_steps > 2e5:
@@ -229,22 +228,6 @@ def run_ddpg(cfg, logger, trial=None):
                 if trial.should_prune():
                     raise optuna.TrialPruned()
 
-            if cfg.plot_agents:
-                # plot_policy(
-                #    actor,
-                #    eval_env_agent,
-                #    "./ddpg_plots/",
-                #    cfg.gym_env.env_name,
-                #    nb_steps,
-                #    stochastic=False,
-                # )
-                plot_critic(
-                    q_agent.agent,
-                    eval_env_agent,
-                    "./ddpg_plots/",
-                    cfg.gym_env.env_name,
-                    nb_steps,
-                )
             if cfg.save_best and best_reward == mean:
                 save_best(
                     eval_agent,
@@ -253,6 +236,22 @@ def run_ddpg(cfg, logger, trial=None):
                     "./ddpg_best_agents/",
                     "ddpg",
                 )
+                if cfg.plot_agents:
+                    plot_policy(
+                        eval_agent.agent.agents[1],
+                        eval_env_agent,
+                        best_reward,
+                        "./ddpg_plots/",
+                        cfg.gym_env.env_name,
+                        stochastic=False,
+                    )
+                    plot_critic(
+                        critic,
+                        eval_env_agent,
+                        best_reward,
+                        "./ddpg_plots/",
+                        cfg.gym_env.env_name,
+                    )
 
     return best_reward
 

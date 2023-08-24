@@ -1,5 +1,6 @@
     save_best: True
-    plot_agents: False
+    plot_agents: True
+    collect_stats: False
 
     log_dir: ./tmp
     video_dir: ${log_dir}/videos

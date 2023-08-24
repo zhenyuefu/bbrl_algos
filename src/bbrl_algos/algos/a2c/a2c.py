@@ -152,7 +152,7 @@ def run_a2c(cfg, logger, trial=None):
             "env/truncated",
             "env/reward",
             "action",
-            "action_logprobs",
+            "policy/action_logprobs",
         ]
         # print("action", action)
         nb_steps += action[0].shape[0]
