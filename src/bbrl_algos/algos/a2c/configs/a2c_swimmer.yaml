@@ -8,14 +8,20 @@
       every_n_seconds: 10
 
     algorithm:
-      seed: 4
+       seed:
+          train: 2
+          eval: 9
+          q: 1
+          act: 2
+          torch: 7
+      max_grad_norm: 0.5
+      n_steps_train: 20
+      n_steps: 30000
       n_envs: 1
-      n_steps: 20
       eval_interval: 2000
       nb_evals: 1
       max_grad_norm: 0.5
       gae: 0.99
-      max_epochs: 3000
       discount_factor: 0.99999
       entropy_coef: 2.55e-5
       critic_coef: 0.6

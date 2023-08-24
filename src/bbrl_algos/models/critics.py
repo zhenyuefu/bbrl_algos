@@ -43,7 +43,7 @@ class ContinuousQAgent(NamedCritic):
             action = action.detach()
         osb_act = torch.cat((obs, action), dim=1)
         q_value = self.model(osb_act)
-        self.set((f"{self.name}/q_value", t), q_value)
+        self.set((f"{self.name}/q_values", t), q_value)
 
     def predict_value(self, obs, action):
         obs_act = torch.cat((obs, action), dim=0)
@@ -70,7 +70,7 @@ class VAgent(NamedCritic):
     def forward(self, t, **kwargs):
         observation = self.get(("env/env_obs", t))
         critic = self.model(observation).squeeze(-1)
-        self.set((f"{self.name}/v_value", t), critic)
+        self.set((f"{self.name}/v_values", t), critic)
 
 
 class DiscreteQAgent(NamedCritic):

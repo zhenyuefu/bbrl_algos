@@ -158,8 +158,8 @@ def compute_critic_loss(
     q_values_rb_1, q_values_rb_2, post_q_values_1, post_q_values_2 = rb_workspace[
         "critic-1/q_value",
         "critic-2/q_value",
-        "target-critic-1/q_value",
-        "target-critic-2/q_value",
+        "target-critic-1/q_values",
+        "target-critic-2/q_values",
     ]
 
     # [[student]] Compute temporal difference
@@ -195,7 +195,7 @@ def compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace):
     action_logprobs_new = rb_workspace["policy/action_logprobs"]
 
     q_agents(rb_workspace, t=0, n_steps=1)
-    q_values_1, q_values_2 = rb_workspace["critic-1/q_value", "critic-2/q_value"]
+    q_values_1, q_values_2 = rb_workspace["critic-1/q_values", "critic-2/q_values"]
 
     current_q_values = torch.min(q_values_1, q_values_2).squeeze(-1)
 

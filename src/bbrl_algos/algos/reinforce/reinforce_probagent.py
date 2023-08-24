@@ -133,9 +133,7 @@ def run_reinforce(cfg):
             "action",
         ]
         critic_agent(train_workspace, stop_variable="env/done")
-        v_value = train_workspace["v_value"]
-        # print(obs,done,truncated,reward,action)
-        # print("val",v_value)
+        v_value = train_workspace["critic/v_values"]
 
         for i in range(cfg.algorithm.n_envs):
             nb_steps += len(action[:, i])

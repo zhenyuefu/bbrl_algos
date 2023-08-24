@@ -31,6 +31,8 @@ from bbrl.utils.chrono import Chrono
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
 from bbrl_algos.models.envs import get_env_agents
+from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 # HYDRA_FULL_ERROR = 1
 
@@ -92,10 +94,8 @@ def compute_actor_loss(action_logp, td):
     return a2c_loss.mean()
 
 
-def run_a2c(cfg):
-    # 1)  Build the  logger
+def run_a2c(cfg, logger, trial=None):
     chrono = Chrono()
-    logger = Logger(cfg)
     best_reward = float("-inf")
 
     # 2) Create the environment agent
@@ -118,15 +118,15 @@ def run_a2c(cfg):
     tmp_steps = 0
 
     # 7) Training loop
-    for epoch in range(cfg.algorithm.max_epochs):
+    while nb_steps < cfg.algorithm.n_steps:
         # Execute the agent in the workspace
-        if epoch > 0:
+        if nb_steps > 0:
             train_workspace.zero_grad()
             train_workspace.copy_n_last_steps(1)
             a2c_agent(
                 train_workspace,
                 t=1,
-                n_steps=cfg.algorithm.n_steps - 1,
+                n_steps=cfg.algorithm.n_steps_train,
                 stochastic=True,
                 predict_proba=False,
                 compute_entropy=True,
@@ -135,19 +135,19 @@ def run_a2c(cfg):
             a2c_agent(
                 train_workspace,
                 t=0,
-                n_steps=cfg.algorithm.n_steps,
+                n_steps=cfg.algorithm.n_steps_train,
                 stochastic=True,
                 predict_proba=False,
                 compute_entropy=True,
             )
 
         # Compute the critic value over the whole workspace
-        critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps)
+        critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps_train)
 
         transition_workspace = train_workspace.get_transitions()
 
         v_value, done, truncated, reward, action, action_logp = transition_workspace[
-            "v_value",
+            "critic/v_values",
             "env/done",
             "env/truncated",
             "env/reward",
@@ -201,51 +201,50 @@ def run_a2c(cfg):
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
             logger.log_reward_losses(rewards, nb_steps)
-            print(f"nb_steps: {nb_steps}, reward: {mean}")
-            if cfg.save_best and mean > best_reward:
+            print(f"nb_steps: {nb_steps}, reward: {mean}, best_reward:{best_reward}")
+            if mean > best_reward:
                 best_reward = mean
-                directory = "./a2c_policies/"
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                filename = (
-                    directory
-                    + cfg.gym_env.env_name
-                    + "#a2c#A1_22#"
-                    + str(mean.item())
-                    + ".agt"
-                )
+
+            if cfg.save_best and best_reward == mean:
                 policy = eval_agent.agent.agents[1]
-                policy.save_model(filename)
+                save_best(
+                    policy, cfg.gym_env.env_name, mean, "./a2c_best_agents/", "a2c"
+                )
                 critic = critic_agent.agent
                 if cfg.plot_agents:
                     plot_policy(
                         policy,
                         eval_env_agent,
+                        best_reward,
                         "./a2c_plots/",
                         cfg.gym_env.env_name,
-                        best_reward,
                         stochastic=False,
                     )
                     plot_critic(
                         critic,
                         eval_env_agent,
+                        best_reward,
                         "./a2c_plots/",
                         cfg.gym_env.env_name,
-                        best_reward,
                     )
+            if trial is not None:
+                trial.report(mean, nb_steps)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
     chrono.stop()
+    return best_reward
 
 
 @hydra.main(
     config_path="./configs/",
     config_name="a2c_swimmer.yaml",
-    version_base="1.1",
+    # version_base="1.1",
 )
-def main(cfg: DictConfig):
-    # print(OmegaConf.to_yaml(cfg))
-    run_a2c(cfg)
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
-
-if __name__ == "__main__":
-    sys.path.append(os.getcwd())
-    main()
+    if "optuna" in cfg_raw:
+        launch_optuna(cfg_raw, run_a2c)
+    else:
+        logger = Logger(cfg_raw)
+        run_a2c(cfg_raw, logger)

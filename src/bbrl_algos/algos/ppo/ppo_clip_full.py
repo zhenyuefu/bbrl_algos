@@ -130,10 +130,8 @@ def compute_clip_actor_loss(cfg, advantage, ratio):
     return actor_loss
 
 
-def run_ppo_clip(cfg):
-    # 1)  Build the  logger
-    logger = Logger(cfg)
-    best_reward = -10e9
+def run_ppo_clip(cfg, logger, trial=None):
+    best_reward = float("-inf")
     nb_steps = 0
     tmp_steps = 0
 
@@ -203,7 +201,7 @@ def run_ppo_clip(cfg):
             "env/truncated",
             "env/reward",
             "action",
-            "v_value",
+            "critic/v_values",
         ]
 
         # Determines whether values of the critic should be propagated
@@ -215,7 +213,7 @@ def run_ppo_clip(cfg):
 
         with torch.no_grad():
             old_critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps)
-        old_v_value = train_workspace["v_value"]
+        old_v_value = train_workspace["critic/v_values"]
         if cfg.algorithm.clip_range_vf > 0:
             # Clip the difference between old and new values
             # NOTE: this depends on the reward scaling

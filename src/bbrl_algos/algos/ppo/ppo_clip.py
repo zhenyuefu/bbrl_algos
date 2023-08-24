@@ -210,7 +210,7 @@ def run_ppo_clip(cfg, logger, trial=None):
             "env/terminated",
             "env/reward",
             "action",
-            "v_value",
+            "critic/v_values",
         ]
         nb_steps += action[0].shape[0]
 
@@ -220,7 +220,7 @@ def run_ppo_clip(cfg, logger, trial=None):
         # the critic values are clamped to move not too far away from the values of the previous critic
         with torch.no_grad():
             old_critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps_train)
-        old_v_value = transition_workspace["v_value"]
+        old_v_value = transition_workspace["critic/v_values"]
 
         if cfg.algorithm.clip_range_vf > 0:
             # Clip the difference between old and new values
