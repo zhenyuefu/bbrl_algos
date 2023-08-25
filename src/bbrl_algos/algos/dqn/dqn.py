@@ -34,8 +34,13 @@ from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
 
-from bbrl.visu.plot_policies import plot_policy
-from bbrl.visu.plot_critics import plot_critic
+from bbrl.visu.plot_critics import plot_discrete_q
+
+# HYDRA_FULL_ERROR = 1
+import matplotlib
+import matplotlib.pyplot as plt
+
+matplotlib.use("TkAgg")
 
 
 # %%
@@ -287,12 +292,13 @@ def run_dqn(cfg, logger, trial=None):
                 choose_action=True,
             )
             rewards = eval_workspace["env/cumulated_reward"][-1]
+            logger.log_reward_losses(rewards, nb_steps)
             mean = rewards.mean()
 
             if mean > best_reward:
                 best_reward = mean
 
-            logger.log_reward_losses(rewards, nb_steps)
+            print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
 
             if trial is not None:
                 trial.report(mean, nb_steps)
@@ -303,17 +309,19 @@ def run_dqn(cfg, logger, trial=None):
                 save_best(
                     eval_agent,
                     cfg.gym_env_eval.identifier,
-                    mean,
+                    best_reward,
                     "./dqn_best_agents/",
                     "dqn",
                 )
                 if cfg.plot_agents:
-                    plot_critic(
-                        eval_agent.agent.agents[1],
+                    critic = eval_agent.agent.agents[1]
+                    plot_discrete_q(
+                        critic,
                         eval_env_agent,
                         best_reward,
                         "./dqn_plots/",
                         cfg.gym_env_eval.identifier,
+                        input_action="policy",
                     )
 
     return mean

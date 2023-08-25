@@ -11,6 +11,7 @@
 
     optuna:
       study:
+        _target_: optuna.create_study
         study_name: ddpg_pendulum
         direction: maximize
         # for a list of optuna pruners, this is here: https://optuna.readthedocs.io/en/stable/reference/pruners.html
