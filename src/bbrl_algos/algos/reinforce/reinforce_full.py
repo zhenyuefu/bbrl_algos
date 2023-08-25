@@ -22,11 +22,18 @@ from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
 from bbrl.utils.functionalb import gae
 from bbrl_algos.models.loggers import Logger
+from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 from bbrl.utils.chrono import Chrono
-
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
+
+# HYDRA_FULL_ERROR = 1
+import matplotlib
+import matplotlib.pyplot as plt
+
+matplotlib.use("TkAgg")
 
 
 def apply_sum(reward):
@@ -74,7 +81,6 @@ def create_reinforce_agent(cfg, env_agent):
 
     # Get an agent that is executed on a complete workspace
     train_agent = TemporalAgent(tr_agent)
-    train_agent.seed(cfg.algorithm.seed)
     return train_agent, critic_agent  # , print_agent
 
 
@@ -122,16 +128,15 @@ def compute_actor_loss(action_logprob, reward, must_bootstrap):
     return actor_loss.mean()
 
 
-def run_reinforce(cfg):
-    logger = Logger(cfg)
+def run_reinforce(cfg, logger, trial=None):
     best_reward = float("-inf")
 
     # 2) Create the environment agent
     env_agent = ParallelGymAgent(
-        partial(make_env, cfg.gym_env.env_name, autoreset=True),
+        partial(make_env, cfg.gym_env.env_name, autoreset=False),
         cfg.algorithm.n_envs,
         include_last_state=True,
-    ).seed(cfg.algorithm.seed)
+    ).seed(cfg.algorithm.seed.env)
 
     reinforce_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
 
@@ -155,19 +160,16 @@ def run_reinforce(cfg):
             stop_variable="env/done",
             compute_entropy=True,
         )
-
         # Get relevant tensors (size are timestep x n_envs x ....)
-        obs, done, truncated, action_logprobs, reward, action = train_workspace[
-            "env/env_obs",
+        done, truncated, action_logprobs, reward, action = train_workspace[
             "env/done",
             "env/truncated",
-            "action_logprobs",
+            "policy/action_logprobs",
             "env/reward",
             "action",
         ]
         critic_agent(train_workspace, stop_variable="env/done")
         v_value = train_workspace["critic/v_values"]
-
         for i in range(cfg.algorithm.n_envs):
             nb_steps += len(action[:, i])
 
@@ -203,29 +205,33 @@ def run_reinforce(cfg):
         print(f"episode: {episode}, reward: {mean}")
 
         if cfg.save_best and mean > best_reward:
-            best_reward = mean
-            directory = "./reinforce_critic/"
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-            filename = directory + "reinforce_" + str(mean.item()) + ".agt"
-            reinforce_agent.save_model(filename)
+            policy = reinforce_agent.agent.agents[1]
+            critic = critic_agent.agent
+            save_best(
+                policy,
+                cfg.gym_env.env_name,
+                mean,
+                "./reinforce_best_agents/",
+                "reinforce",
+            )
             if cfg.plot_agents:
-                policy = reinforce_agent.agent.agents[1]
-                critic = critic_agent.agent
+                """
+                # Does not work yet for a discrete action policy
                 plot_policy(
                     policy,
                     env_agent,
+                    best_reward,
                     "./reinforce_plots/",
                     cfg.gym_env.env_name,
-                    best_reward,
                     stochastic=False,
                 )
+                """
                 plot_critic(
                     critic,
                     env_agent,
+                    best_reward,
                     "./reinforce_plots/",
                     cfg.gym_env.env_name,
-                    best_reward,
                 )
 
 
@@ -233,22 +239,17 @@ def run_reinforce(cfg):
     config_path="./configs/",
     # config_name="reinforce_debugv.yaml",
     config_name="reinforce_cartpole.yaml",
-    version_base="1.1",
+    # version_base="1.1",
 )
-def main(cfg: DictConfig):
-    chrono = Chrono()
-    torch.manual_seed(cfg.algorithm.seed)
-    run_reinforce(cfg)
-    chrono.stop()
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
-
-def calc():
-    sum = 0
-    for i in range(500):
-        sum += 0.95**i
-    print(sum)
+    if "optuna" in cfg_raw:
+        launch_optuna(cfg_raw, run_reinforce)
+    else:
+        logger = Logger(cfg_raw)
+        run_reinforce(cfg_raw, logger)
 
 
 if __name__ == "__main__":
-    # calc()
     main()

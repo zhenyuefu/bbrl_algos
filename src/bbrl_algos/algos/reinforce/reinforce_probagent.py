@@ -20,9 +20,10 @@ from bbrl_algos.models.stochastic_actors import StateDependentVarianceContinuous
 from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
 from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
+from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 from bbrl.utils.functionalb import gae
 from bbrl.utils.chrono import Chrono
-
 
 # This version is useful only to illustrate how one can compute the log probabilities
 # of actions a posteriori, rather than online. The online version is clearly more elegant
@@ -57,7 +58,6 @@ def create_reinforce_agent(cfg, env_agent):
 
     # Get an agent that is executed on a complete workspace
     train_agent = TemporalAgent(tr_agent)
-    train_agent.seed(cfg.algorithm.seed)
     return train_agent, proba_agent, critic_agent  # , print_agent
 
 
@@ -96,15 +96,14 @@ class Logger:
         self.add_log("actor_loss", actor_loss, epoch)
 
 
-def run_reinforce(cfg):
-    logger = Logger(cfg)
+def run_reinforce(cfg, logger, trial=None):
 
     # 2) Create the environment agent
     env_agent = ParallelGymAgent(
-        partial(make_env, cfg.gym_env.env_name, autoreset=True),
+        partial(make_env, cfg.gym_env.env_name, autoreset=False),
         cfg.algorithm.n_envs,
         include_last_state=True,
-    ).seed(cfg.algorithm.seed)
+    ).seed(cfg.algorithm.seed.env)
 
     reinforce_agent, proba_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
 
@@ -128,7 +127,7 @@ def run_reinforce(cfg):
             "env/env_obs",
             "env/done",
             "env/truncated",
-            "action_probs",
+            "policy/action_probs",
             "env/reward",
             "action",
         ]
@@ -179,13 +178,16 @@ def run_reinforce(cfg):
 @hydra.main(
     config_path="./configs/",
     config_name="reinforce_cartpole.yaml",  # debugv.yaml",
-    version_base="1.1",
+    # version_base="1.1",
 )
-def main(cfg: DictConfig):
-    chrono = Chrono()
-    torch.manual_seed(cfg.algorithm.seed)
-    run_reinforce(cfg)
-    chrono.stop()
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
+
+    if "optuna" in cfg_raw:
+        launch_optuna(cfg_raw, run_reinforce)
+    else:
+        logger = Logger(cfg_raw)
+        run_reinforce(cfg_raw, logger)
 
 
 if __name__ == "__main__":
