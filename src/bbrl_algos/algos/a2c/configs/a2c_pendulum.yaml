@@ -9,7 +9,7 @@
       every_n_seconds: 10
 
     algorithm:
-       seed:
+      seed:
           train: 2
           eval: 9
           q: 1
@@ -18,7 +18,7 @@
       max_grad_norm: 0.5
       n_envs: 8
       n_steps_train: 100
-      n_steps: 30000
+      n_steps: 300000
       eval_interval: 1000
       nb_evals: 10
       gae: 0.8

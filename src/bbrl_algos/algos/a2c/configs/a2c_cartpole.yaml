@@ -17,7 +17,7 @@
             max_grad_norm: 0.5
             n_envs: 8
             n_steps_train: 20
-            n_steps: 30000
+            n_steps: 500000
             eval_interval: 2000
             nb_evals: 10
             gae: 0.9

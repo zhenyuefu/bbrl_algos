@@ -11,7 +11,7 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent
 
-from bbrl.utils.functionalb import gae
+from bbrl.utils.functional import gae
 
 import hydra
 
@@ -72,7 +72,7 @@ def compute_critic_loss(cfg, reward, must_bootstrap, v_value):
     # Compute temporal difference
     # target = reward[:-1] + cfg.algorithm.discount_factor * v_value[1:].detach() * must_bootstrap.int()
     # td = target - v_value[:-1]
-    td = gae(
+    advantages = gae(
         v_value,
         reward,
         must_bootstrap,
@@ -80,6 +80,7 @@ def compute_critic_loss(cfg, reward, must_bootstrap, v_value):
         cfg.algorithm.gae,
     )
     # Compute critic loss
+    td = advantages - v_value[:-1]
     td_error = td**2
     critic_loss = td_error.mean()
     return critic_loss, td
@@ -122,7 +123,7 @@ def run_a2c(cfg, logger, trial=None):
             a2c_agent(
                 train_workspace,
                 t=1,
-                n_steps=cfg.algorithm.n_steps_train,
+                n_steps=cfg.algorithm.n_steps_train - 1,
                 stochastic=True,
                 predict_proba=False,
                 compute_entropy=True,
@@ -139,7 +140,6 @@ def run_a2c(cfg, logger, trial=None):
 
         # Compute the critic value over the whole workspace
         critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps_train)
-        nb_steps += cfg.algorithm.n_steps * cfg.algorithm.n_envs
 
         transition_workspace = train_workspace.get_transitions()
 
@@ -151,7 +151,7 @@ def run_a2c(cfg, logger, trial=None):
             "action",
             "policy/action_logprobs",
         ]
-
+        nb_steps += action[0].shape[0]
         # Determines whether values of the critic should be propagated
         # True if the episode reached a time limit or if the task was not done
         # See https://colab.research.google.com/drive/1erLbRKvdkdDy0Zn1X_JhC01s1QAt4BBj?usp=sharing
@@ -200,7 +200,9 @@ def run_a2c(cfg, logger, trial=None):
                     score += 1
             mean = cum_rewards.mean()
             logger.log_reward_losses(rewards, nb_steps)
-            print(f"nb_steps: {nb_steps}, reward: {mean}, best_reward:{best_reward}")
+            print(
+                f"nb_steps: {nb_steps}, reward: {mean:.0f}, best_reward: {best_reward:.0f}"
+            )
             if score > 0:
                 print(f"score : {score}")
 
@@ -214,14 +216,6 @@ def run_a2c(cfg, logger, trial=None):
                 )
                 critic = critic_agent.agent
                 if cfg.plot_agents:
-                    plot_policy(
-                        policy,
-                        eval_env_agent,
-                        best_reward,
-                        "./a2c_plots/",
-                        cfg.gym_env.env_name,
-                        stochastic=False,
-                    )
                     plot_critic(
                         critic,
                         eval_env_agent,

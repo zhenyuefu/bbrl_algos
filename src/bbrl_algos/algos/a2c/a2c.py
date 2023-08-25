@@ -11,7 +11,7 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent
 
-from bbrl.utils.functionalb import gae
+from bbrl.utils.functional import gae
 
 import hydra
 
@@ -84,7 +84,8 @@ def compute_advantages_loss(cfg, reward, must_bootstrap, v_value):
         cfg.algorithm.gae,
     )
     # Compute critic loss
-    td_error = advantages**2
+    td = advantages - v_value[:-1]
+    td_error = td**2
     critic_loss = td_error.mean()
     return critic_loss, advantages
 
@@ -126,7 +127,7 @@ def run_a2c(cfg, logger, trial=None):
             a2c_agent(
                 train_workspace,
                 t=1,
-                n_steps=cfg.algorithm.n_steps_train,
+                n_steps=cfg.algorithm.n_steps_train - 1,
                 stochastic=True,
                 predict_proba=False,
                 compute_entropy=True,
@@ -200,7 +201,9 @@ def run_a2c(cfg, logger, trial=None):
             rewards = eval_workspace["env/cumulated_reward"][-1]
             mean = rewards.mean()
             logger.log_reward_losses(rewards, nb_steps)
-            print(f"nb_steps: {nb_steps}, reward: {mean}, best_reward:{best_reward}")
+            print(
+                f"nb_steps: {nb_steps}, reward: {mean:.0f}, best_reward: {best_reward:.0f}"
+            )
             if mean > best_reward:
                 best_reward = mean
 
@@ -238,8 +241,8 @@ def run_a2c(cfg, logger, trial=None):
 
 @hydra.main(
     config_path="./configs/",
-    config_name="a2c_cartpole.yaml",
-    # config_name="a2c_pendulum.yaml",
+    # config_name="a2c_cartpole.yaml",
+    config_name="a2c_pendulum.yaml",
     # config_name="a2c_swimmer.yaml",
     # version_base="1.1",
 )
