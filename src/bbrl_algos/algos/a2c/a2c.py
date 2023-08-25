@@ -241,8 +241,8 @@ def run_a2c(cfg, logger, trial=None):
 
 @hydra.main(
     config_path="./configs/",
-    # config_name="a2c_cartpole.yaml",
-    config_name="a2c_pendulum.yaml",
+    config_name="a2c_cartpole.yaml",
+    # config_name="a2c_pendulum.yaml",
     # config_name="a2c_swimmer.yaml",
     # version_base="1.1",
 )

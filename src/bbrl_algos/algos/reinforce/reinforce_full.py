@@ -205,6 +205,7 @@ def run_reinforce(cfg, logger, trial=None):
         print(f"episode: {episode}, reward: {mean}")
 
         if cfg.save_best and mean > best_reward:
+            best_reward = mean
             policy = reinforce_agent.agent.agents[1]
             critic = critic_agent.agent
             save_best(
@@ -215,8 +216,6 @@ def run_reinforce(cfg, logger, trial=None):
                 "reinforce",
             )
             if cfg.plot_agents:
-                """
-                # Does not work yet for a discrete action policy
                 plot_policy(
                     policy,
                     env_agent,
@@ -225,7 +224,6 @@ def run_reinforce(cfg, logger, trial=None):
                     cfg.gym_env.env_name,
                     stochastic=False,
                 )
-                """
                 plot_critic(
                     critic,
                     env_agent,

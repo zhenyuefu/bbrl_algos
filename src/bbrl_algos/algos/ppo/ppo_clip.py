@@ -43,6 +43,8 @@ from bbrl.agents import Agents, TemporalAgent, PrintAgent
 # ... When called at timestep t=0, then the environments are automatically reset.
 # At timestep t>0, these agents will read the ’action’ variable in the workspace at time t − 1
 from bbrl_algos.models.envs import get_env_agents
+from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 # Neural network models for actors and critics
 from bbrl_algos.models.stochastic_actors import (
@@ -56,8 +58,7 @@ from bbrl_algos.models.stochastic_actors import (
     BernoulliActor,
 )
 from bbrl_algos.models.critics import VAgent
-from bbrl_algos.models.hyper_params import launch_optuna
-from bbrl_algos.models.utils import save_best
+
 
 # Used to display a policy and a critic as a 2D map
 from bbrl.visu.plot_policies import plot_policy
@@ -256,8 +257,6 @@ def run_ppo_clip(cfg, logger, trial=None):
             else:
                 sample_workspace = transition_workspace
 
-            # [[student]] Compute the policy loss
-
             # Compute the probability of the played actions according to the current policy
             # We do not replay the action: we use the one stored into the dataset
             # Hence predict_proba=True
@@ -286,7 +285,6 @@ def run_ppo_clip(cfg, logger, trial=None):
             # (using compute_clip_policy_loss)
             policy_advantage = advantage.detach()[1]
             policy_loss = compute_clip_policy_loss(cfg, policy_advantage, ratios)
-            # [[/student]]
 
             loss_policy = -cfg.algorithm.policy_coef * policy_loss
 

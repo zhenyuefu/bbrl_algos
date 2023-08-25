@@ -61,7 +61,6 @@ class VAgent(NamedCritic):
         **kwargs,
     ):
         super().__init__(name, *args, **kwargs)
-        self.is_q_function = False
         self.model = build_mlp(
             [state_dim] + list(hidden_layers) + [1], activation=nn.ReLU()
         )

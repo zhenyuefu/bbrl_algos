@@ -63,7 +63,7 @@ from bbrl_algos.models.critics import VAgent
 # It is used to compute the KL divergence between the current and the past policy
 from bbrl_algos.models.exploration_agents import KLAgent
 
-# Allow to display a policy and a critic as a 2D map
+# Used to display a policy and a critic as a 2D map
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
 
@@ -89,16 +89,25 @@ def create_ppo_agent(cfg, train_env_agent, eval_env_agent):
     tr_agent = Agents(train_env_agent, policy)
     ev_agent = Agents(eval_env_agent, policy)
 
+    """
     critic_agent = TemporalAgent(
         VAgent(obs_size, cfg.algorithm.architecture.critic_hidden_size)
     )
     old_critic_agent = copy.deepcopy(critic_agent)
+    """
+
+    critic_agent = VAgent(obs_size, cfg.algorithm.architecture.critic_hidden_size)
+    old_critic_agent = copy.deepcopy(critic_agent)  # .set_name("old_critic")
+
+    critic_agent = TemporalAgent(critic_agent)
+    old_critic_agent = TemporalAgent(old_critic_agent)
 
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
 
     old_policy = copy.deepcopy(policy)
     old_policy.set_name("old_policy")
+
     kl_agent = TemporalAgent(KLAgent(old_policy, policy))
     return (
         train_agent,
@@ -223,6 +232,7 @@ def run_ppo_penalty(cfg, logger, trial=None):
         # the critic values are clamped to move not too far away from the values of the previous critic
         with torch.no_grad():
             old_critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps_train)
+        # transition_workspace = train_workspace.get_transitions()
         old_v_value = transition_workspace["critic/v_values"]
         if cfg.algorithm.clip_range_vf > 0:
             # Clip the difference between old and new values
@@ -332,7 +342,6 @@ def run_ppo_penalty(cfg, logger, trial=None):
                 save_best(
                     policy, cfg.gym_env.env_name, mean, "./ppo_best_agents/", "ppo"
                 )
-
                 if cfg.plot_agents:
                     plot_policy(
                         eval_agent.agent.agents[1],

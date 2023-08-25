@@ -207,35 +207,33 @@ def run_a2c(cfg, logger, trial=None):
             )
             if mean > best_reward:
                 best_reward = mean
-
-            if cfg.save_best and best_reward == mean:
-                policy = eval_agent.agent.agents[1]
-                save_best(
-                    policy, cfg.gym_env.env_name, mean, "./a2c_best_agents/", "a2c"
-                )
-                critic = critic_agent.agent
-                if cfg.plot_agents:
-                    """
-                    plot_policy(
-                        policy,
-                        eval_env_agent,
-                        best_reward,
-                        "./a2c_plots/",
-                        cfg.gym_env.env_name,
-                        stochastic=False,
+                if cfg.save_best:
+                    policy = eval_agent.agent.agents[1]
+                    save_best(
+                        policy, cfg.gym_env.env_name, mean, "./a2c_best_agents/", "a2c"
                     )
-                    """
-                    plot_critic(
-                        critic,
-                        eval_env_agent,
-                        best_reward,
-                        "./a2c_plots/",
-                        cfg.gym_env.env_name,
-                    )
+                    critic = critic_agent.agent
+                    if cfg.plot_agents:
+                        plot_policy(
+                            policy,
+                            eval_env_agent,
+                            best_reward,
+                            "./a2c_plots/",
+                            cfg.gym_env.env_name,
+                            stochastic=False,
+                        )
+                        plot_critic(
+                            critic,
+                            eval_env_agent,
+                            best_reward,
+                            "./a2c_plots/",
+                            cfg.gym_env.env_name,
+                        )
             if trial is not None:
                 trial.report(mean, nb_steps)
                 if trial.should_prune():
                     raise optuna.TrialPruned()
+
     chrono.stop()
     return best_reward
 
