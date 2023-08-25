@@ -305,7 +305,7 @@ def run_ppo_clip(cfg, logger, trial=None):
             optimizer.step()
 
         old_policy_params.copy_parameters(policy)
-        all_critics.agent.agents[1] = copy.deepcopy(critic_agent)
+        all_critics.agent.agents[1] = copy.deepcopy(critic_agent).set_name("old_critic")
 
         # Evaluate if enough steps have been performed
         if nb_steps - tmp_steps > cfg.algorithm.eval_interval:
