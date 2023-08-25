@@ -89,18 +89,10 @@ def create_ppo_agent(cfg, train_env_agent, eval_env_agent):
     tr_agent = Agents(train_env_agent, policy)
     ev_agent = Agents(eval_env_agent, policy)
 
-    """
-    critic_agent = TemporalAgent(
-        VAgent(obs_size, cfg.algorithm.architecture.critic_hidden_size)
-    )
-    old_critic_agent = copy.deepcopy(critic_agent)
-    """
-
     critic_agent = VAgent(obs_size, cfg.algorithm.architecture.critic_hidden_size)
-    old_critic_agent = copy.deepcopy(critic_agent)  # .set_name("old_critic")
+    old_critic_agent = copy.deepcopy(critic_agent).set_name("old_critic")
 
-    critic_agent = TemporalAgent(critic_agent)
-    old_critic_agent = TemporalAgent(old_critic_agent)
+    all_critics = TemporalAgent(Agents(critic_agent, old_critic_agent))
 
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
@@ -113,9 +105,9 @@ def create_ppo_agent(cfg, train_env_agent, eval_env_agent):
         train_agent,
         eval_agent,
         critic_agent,
+        all_critics,
         policy,
         old_policy,
-        old_critic_agent,
         kl_agent,
     )
 
@@ -162,9 +154,9 @@ def run_ppo_penalty(cfg, logger, trial=None):
         train_agent,
         eval_agent,
         critic_agent,
+        all_critics,
         policy,
         old_policy_params,
-        old_critic_agent,
         kl_agent,
     ) = create_ppo_agent(cfg, train_env_agent, eval_env_agent)
 
@@ -213,15 +205,16 @@ def run_ppo_penalty(cfg, logger, trial=None):
             )
 
         # Compute the critic value over the whole workspace
-        critic_agent(train_workspace, t=delta_t, n_steps=cfg.algorithm.n_steps_train)
+        all_critics(train_workspace, t=delta_t, n_steps=cfg.algorithm.n_steps_train)
 
         transition_workspace = train_workspace.get_transitions()
 
-        terminated, reward, action, v_value = transition_workspace[
+        terminated, reward, action, v_value, old_v_value = transition_workspace[
             "env/terminated",
             "env/reward",
             "action",
             "critic/v_values",
+            "old_critic/v_values",
         ]
         nb_steps += action[0].shape[0]
 
@@ -229,11 +222,10 @@ def run_ppo_penalty(cfg, logger, trial=None):
         # True if the episode reached a time limit or if the task was not done
         must_bootstrap = ~terminated[1]
 
-        # the critic values are clamped to move not too far away from the values of the previous critic
-        with torch.no_grad():
-            old_critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps_train)
-        # transition_workspace = train_workspace.get_transitions()
-        old_v_value = transition_workspace["critic/v_values"]
+        assert (
+            old_v_value.shape == v_value.shape
+        ), f"{old_v_value.shape}[{old_v_value}]/{v_value.shape}[{v_value}]"
+        # assert old_v_value.equal(v_value), f"{old_v_value.shape}[{old_v_value}]/{v_value.shape}[{v_value}]"
         if cfg.algorithm.clip_range_vf > 0:
             # Clip the difference between old and new values
             # NOTE: this depends on the reward scaling
@@ -315,7 +307,7 @@ def run_ppo_penalty(cfg, logger, trial=None):
             optimizer.step()
 
         old_policy_params.copy_parameters(policy)
-        old_critic_agent = copy.deepcopy(critic_agent)
+        all_critics.agent.agents[1] = copy.deepcopy(critic_agent)
 
         # Evaluate if enough steps have been performed
         if nb_steps - tmp_steps > cfg.algorithm.eval_interval:
@@ -352,7 +344,7 @@ def run_ppo_penalty(cfg, logger, trial=None):
                         stochastic=False,
                     )
                     plot_critic(
-                        critic_agent.agent,
+                        critic_agent,
                         eval_env_agent,
                         best_reward,
                         "./ppo_plots/",
