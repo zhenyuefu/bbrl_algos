@@ -16,16 +16,15 @@ def get_env_agents(
 ) -> Tuple[GymAgent, GymAgent]:
     # Returns a pair of environments (train / evaluation) based on a configuration `cfg`
 
-    """
-    if cfg.gym_env.xml_file is None:
-        xml_file = None
-    else:
-        xml_file = assets_path + cfg.gym_env.xml_file
+    
+    if "xml_file" in cfg.gym_env:
+         xml_file = assets_path + cfg.gym_env.xml_file
         # print ("loading:", xml_file)
-
-    if cfg.gym_env.wrappers is not None:
+    else:
+        xml_file = None
+       
+    if "wrappers" in cfg.gym_env:
         print ("using wrappers:", cfg.gym_env.wrappers)
-    """
 
     # Train environment
     train_env_agent = ParallelGymAgent(

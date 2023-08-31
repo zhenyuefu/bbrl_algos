@@ -108,8 +108,6 @@ def run_a2c(cfg, logger, trial=None):
     nb_steps = 0
     tmp_steps = 0
 
-    print("starting loop")
-
     # 7) Training loop
     while nb_steps < cfg.algorithm.n_steps:
         # Execute the agent in the workspace
@@ -134,7 +132,6 @@ def run_a2c(cfg, logger, trial=None):
                 compute_entropy=True,
             )
 
-        print("in loop")
         # Compute the critic value over the whole workspace
         critic_agent(train_workspace, n_steps=cfg.algorithm.n_steps_train)
 
