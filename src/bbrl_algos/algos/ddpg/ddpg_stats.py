@@ -5,8 +5,6 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-import gym
-import bbrl_gymnasium
 import hydra
 import optuna
 
@@ -70,10 +68,6 @@ def create_ddpg_agent(cfg, train_env_agent, eval_env_agent):
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
     return train_agent, eval_agent, actor, critic, target_critic  # , target_actor
-
-
-def make_gym_env(env_name):
-    return gym.make(env_name)
 
 
 # Configure the optimizer

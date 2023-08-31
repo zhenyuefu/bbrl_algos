@@ -35,8 +35,10 @@
                   actor_hidden_size: [32, 32]
                   critic_hidden_size: [256, 256]
 
+      # Note: Swimmer-v3 is deprecated, but Swimmer-v4 does not seem to accept an xml_file
       gym_env:
-            env_name: Pendulum-v1
+            env_name: Swimmer-v3
+            xml_file: swimmer3.xml
 
       actor_optimizer:
             classname: torch.optim.Adam

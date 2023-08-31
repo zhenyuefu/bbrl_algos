@@ -1,8 +1,6 @@
 import sys
 import os
 
-import gym
-import bbrl_gymnasium
 import optuna
 import yaml
 import mujoco_py
@@ -58,10 +56,6 @@ def create_a2c_agent(cfg, train_env_agent, eval_env_agent):
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
     return train_agent, eval_agent, critic_agent
-
-
-def make_gym_env(env_name):
-    return gym.make(env_name)
 
 
 # Configure the optimizer over the a2c agent

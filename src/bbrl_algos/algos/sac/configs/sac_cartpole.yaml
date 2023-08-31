@@ -35,7 +35,6 @@
                   critic_hidden_size: [256, 256]
 
       gym_env:
-            classname: __main__.make_gym_env
             env_name: CartPole-v1
 
       actor_optimizer:

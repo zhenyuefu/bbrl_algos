@@ -3,8 +3,6 @@ import os
 import copy
 import torch
 import torch.nn as nn
-import gym
-import bbrl_gymnasium
 import hydra
 import numpy as np
 import optuna
@@ -76,10 +74,6 @@ def create_sac_agent(cfg, train_env_agent, eval_env_agent):
         critic_2,
         target_critic_2,
     )
-
-
-def make_gym_env(env_name):
-    return gym.make(env_name)
 
 
 # Configure the optimizer
@@ -156,8 +150,8 @@ def compute_critic_loss(
         target_q_agents(rb_workspace, t=1, n_steps=1)
 
     q_values_rb_1, q_values_rb_2, post_q_values_1, post_q_values_2 = rb_workspace[
-        "critic-1/q_value",
-        "critic-2/q_value",
+        "critic-1/q_values",
+        "critic-2/q_values",
         "target-critic-1/q_values",
         "target-critic-2/q_values",
     ]
@@ -390,7 +384,8 @@ def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
 @hydra.main(
     config_path="./configs/",
     # config_name="sac_cartpolecontinuous.yaml",
-    config_name="sac_pendulum.yaml",
+    # config_name="sac_pendulum.yaml",
+    config_name="sac_swimmer_optuna.yaml",
     # version_base="1.3",
 )
 def main(cfg_raw: DictConfig):

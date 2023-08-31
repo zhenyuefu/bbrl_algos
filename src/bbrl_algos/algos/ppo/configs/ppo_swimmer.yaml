@@ -35,7 +35,6 @@
                   critic_hidden_size: [64]
 
       gym_env:
-            classname: __main__.make_gym_env
             env_name: Swimmer-v3
 
       optimizer:

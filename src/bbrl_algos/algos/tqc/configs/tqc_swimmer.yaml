@@ -30,7 +30,6 @@
                   n_nets: 2
                   n_quantiles: 25
       gym_env:
-            classname: __main__.make_gym_env
             env_name: Swimmer-v3
 
       actor_optimizer:

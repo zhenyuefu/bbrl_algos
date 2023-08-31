@@ -84,10 +84,6 @@ def create_reinforce_agent(cfg, env_agent):
     return train_agent, critic_agent  # , print_agent
 
 
-def make_gym_env(env_name):
-    return gym.make(env_name)
-
-
 # Configure the optimizer over the a2c agent
 def setup_optimizer(cfg, actor, critic):
     optimizer_args = get_arguments(cfg.optimizer)

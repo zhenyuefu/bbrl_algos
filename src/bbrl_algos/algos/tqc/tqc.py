@@ -64,10 +64,6 @@ def create_tqc_agent(cfg, train_env_agent, eval_env_agent):
     return train_agent, eval_agent, actor, critic, target_critic
 
 
-def make_gym_env(env_name):
-    return gym.make(env_name)
-
-
 # Configure the optimizer
 def setup_optimizers(cfg, actor, critic):
     actor_optimizer_args = get_arguments(cfg.actor_optimizer)

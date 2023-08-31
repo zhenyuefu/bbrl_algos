@@ -39,10 +39,6 @@ def apply_sum(reward):
     return reward
 
 
-def make_gym_env(env_name):
-    return gym.make(env_name)
-
-
 def create_reinforce_agent(cfg, env_agent):
     obs_size, act_size = env_agent.get_obs_and_actions_sizes()
     proba_agent = ProbAgent(

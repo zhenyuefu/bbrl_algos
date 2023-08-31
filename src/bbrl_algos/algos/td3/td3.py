@@ -76,10 +76,6 @@ def create_td3_agent(cfg, train_env_agent, eval_env_agent):
     )
 
 
-def make_gym_env(env_name):
-    return gym.make(env_name)
-
-
 # Configure the optimizer
 def setup_optimizers(cfg, actor, critic_1, critic_2):
     actor_optimizer_args = get_arguments(cfg.actor_optimizer)

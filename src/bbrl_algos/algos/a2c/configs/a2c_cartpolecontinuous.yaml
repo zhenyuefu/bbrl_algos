@@ -33,7 +33,6 @@
         critic_hidden_size: [25, 25]
 
     gym_env:
-      classname: __main__.make_gym_env
       env_name: CartPoleContinuous-v1
 
     optimizer:

@@ -1,6 +1,4 @@
 import os
-import gym
-import my_gym
 import hydra
 import torch
 import torch.nn as nn
@@ -22,7 +20,6 @@ from bbrl_algos.models.critics import VAgent
 from bbrl.utils.functionalb import gae
 from bbrl_algos.models.loggers import Logger
 from bbrl.utils.chrono import Chrono
-
 
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
@@ -75,10 +72,6 @@ def create_reinforce_agent(cfg, env_agent):
     train_agent = TemporalAgent(tr_agent)
     train_agent.seed(cfg.algorithm.seed)
     return train_agent, critic_agent  # , print_agent
-
-
-def make_gym_env(env_name):
-    return gym.make(env_name)
 
 
 # Configure the optimizer over the a2c agent

@@ -5,7 +5,6 @@ See: https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
 for a full description of all the coding tricks that should be integrated
 """
 
-
 import sys
 import os
 import copy
@@ -13,8 +12,6 @@ import copy
 import torch
 import torch.nn as nn
 
-import gym
-import bbrl_gymnasium
 import optuna
 import hydra
 
@@ -67,10 +64,6 @@ from bbrl.visu.plot_critics import plot_critic
 import matplotlib
 
 matplotlib.use("TkAgg")
-
-
-def make_gym_env(env_name):
-    return gym.make(env_name)
 
 
 # Create the PPO Agent

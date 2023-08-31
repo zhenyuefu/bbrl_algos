@@ -36,7 +36,6 @@
                   critic_hidden_size: [64, 64]
 
       gym_env:
-            classname: __main__.make_gym_env
             env_name: SingleStateMDP-v0
 
       optimizer:
