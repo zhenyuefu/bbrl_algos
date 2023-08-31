@@ -1,14 +1,14 @@
-    save_best: True
-    plot_agents: False
+save_best: True
+plot_agents: False
 
-    logger:
+logger:
       classname: bbrl.utils.logger.TFLogger
       log_dir: ./a2c_logs/
       verbose: False
       every_n_seconds: 10
 
-    algorithm:
-       seed:
+algorithm:
+      seed:
           train: 2
           eval: 9
           q: 1
@@ -30,10 +30,10 @@
         actor_hidden_size: [64, 64]
         critic_hidden_size: [64, 64]
 
-    gym_env:
+gym_env:
       env_name: RocketLander-v0
       wrapper: RocketLanderWrapper
 
-    optimizer:
+optimizer:
       classname: torch.optim.Adam
       lr: 0.001
