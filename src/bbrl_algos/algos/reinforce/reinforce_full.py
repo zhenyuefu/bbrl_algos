@@ -1,6 +1,4 @@
 import os
-import gym
-import bbrl_gymnasium
 import optuna
 import yaml
 import hydra

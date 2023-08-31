@@ -1,6 +1,4 @@
 import os
-import gym
-import bbrl_gymnasium
 import optuna
 import yaml
 import hydra
@@ -54,7 +52,7 @@ def create_reinforce_agent(cfg, env_agent):
 
     # Get an agent that is executed on a complete workspace
     train_agent = TemporalAgent(tr_agent)
-    return train_agent, proba_agent, critic_agent  # , print_agent
+    return train_agent, critic_agent  # , print_agent
 
 
 # Configure the optimizer over the a2c agent
@@ -101,7 +99,7 @@ def run_reinforce(cfg, logger, trial=None):
         include_last_state=True,
     ).seed(cfg.algorithm.seed.env)
 
-    reinforce_agent, proba_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
+    reinforce_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
 
     # 7) Configure the optimizer over the a2c agent
     optimizer = setup_optimizer(cfg, reinforce_agent, critic_agent)

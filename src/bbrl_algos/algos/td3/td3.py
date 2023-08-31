@@ -4,8 +4,6 @@ import numpy
 
 import torch
 import torch.nn as nn
-import gym
-import bbrl_gymnasium
 import hydra
 import optuna
 

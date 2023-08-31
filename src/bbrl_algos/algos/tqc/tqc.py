@@ -2,8 +2,6 @@ import sys
 import os
 import copy
 import torch
-import gym
-import bbrl_gymnasium
 import hydra
 import numpy as np
 
@@ -14,7 +12,7 @@ from bbrl import get_arguments, get_class
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent, PrintAgent
 
-from bbrl_algos.models.loggers import MyLogger, Logger
+from bbrl_algos.models.loggers import Logger
 from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.actors import SquashedGaussianActor
