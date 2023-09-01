@@ -1,3 +1,7 @@
 wandb
 optuna
 bbrl @ git+https://github.com/osigaud/bbrl@dev
+bbrl_gymnasium[mujoco]
+bbrl_gymnasium[box2d]
+bbrl_gymnasium[classic_control]
+
