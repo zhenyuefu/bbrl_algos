@@ -32,7 +32,7 @@ from bbrl_algos.models.stochastic_actors import (
     DiscreteActor,
     BernoulliActor,
 )
-from bbrl_algos.models.envs import create_no_reset_env_agent
+from bbrl_algos.models.envs import get_eval_env_agent
 
 from bbrl.visu.plot_policies import plot_policy
 
@@ -70,14 +70,13 @@ def create_CEM_agent(cfg, env_agent):
     )
     ev_agent = Agents(env_agent, policy)
     eval_agent = TemporalAgent(ev_agent)
-    eval_agent.seed(cfg.algorithm.seed)
 
     return eval_agent
 
 
 def run_cem(cfg, logger, trial=None):
 
-    eval_env_agent = create_no_reset_env_agent(cfg)
+    eval_env_agent = get_eval_env_agent(cfg)
 
     pop_size = cfg.algorithm.pop_size
 
@@ -94,7 +93,7 @@ def run_cem(cfg, logger, trial=None):
     nb_steps = 0
 
     # 7) Training loop
-    for epoch in range(cfg.algorithm.max_epochs):
+    while nb_steps < cfg.algorithm.n_steps:
         matrix.update_noise()
         scores = []
         weights = matrix.generate_weights(centroid, pop_size)
@@ -124,13 +123,14 @@ def run_cem(cfg, logger, trial=None):
                 save_best(
                     eval_agent, cfg.gym_env.env_name, mean_reward, "./cem_best_agents/", "cem"
                 )
+                # print(cfg.gym_env.env_name)
                 if cfg.plot_agents:
                     plot_policy(
                         eval_agent.agent.agents[1],
                         eval_env_agent,
+                        best_score,
                         "./cem_plots/",
                         cfg.gym_env.env_name,
-                        best_score,
                         stochastic=False,
                     )
         # Keep only best individuals to compute the new centroid
@@ -144,13 +144,16 @@ def run_cem(cfg, logger, trial=None):
         # Update covariance
         matrix.update_noise()
         matrix.update_covariance(elites_weights)
-        print("---------------------")
+        if cfg.verbose:
+            print("---------------------")
+    return best_score
 
 
 # %%
 @hydra.main(
     config_path="./configs/",
-    config_name="cem_mountain_car.yaml",
+    config_name="cem_swimmer_optuna.yaml",
+    # config_name="cem_mountain_car.yaml",
     # config_name="cem_cartpole.yaml",
     # version_base="1.3",
 )
@@ -158,10 +161,10 @@ def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     if "optuna" in cfg_raw:
-        launch_optuna(cfg_raw, run_sac)
+        launch_optuna(cfg_raw, run_cem)
     else:
         logger = Logger(cfg_raw)
-        run_sac(cfg_raw, logger)
+        run_cem(cfg_raw, logger)
 
 
 if __name__ == "__main__":

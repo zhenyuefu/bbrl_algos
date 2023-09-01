@@ -22,6 +22,7 @@ from bbrl.utils.functionalb import gae
 from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
+from bbrl_algos.models.envs import get_eval_env_agent
 from bbrl.utils.chrono import Chrono
 
 from bbrl.visu.plot_policies import plot_policy
@@ -126,11 +127,7 @@ def run_reinforce(cfg, logger, trial=None):
     best_reward = float("-inf")
 
     # 2) Create the environment agent
-    env_agent = ParallelGymAgent(
-        partial(make_env, cfg.gym_env.env_name, autoreset=False),
-        cfg.algorithm.n_envs,
-        include_last_state=True,
-    ).seed(cfg.algorithm.seed.env)
+    env_agent = get_eval_env_agent(cfg)
 
     reinforce_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
 

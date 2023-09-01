@@ -20,6 +20,7 @@ from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
+from bbrl_algos.models.envs import get_eval_env_agent
 from bbrl.utils.functionalb import gae
 from bbrl.utils.chrono import Chrono
 
@@ -77,27 +78,10 @@ def compute_critic_loss(cfg, reward, must_bootstrap, critic):
     return critic_loss, td
 
 
-class Logger:
-    def __init__(self, cfg):
-        self.logger = instantiate_class(cfg.logger)
-
-    def add_log(self, log_string, loss, epoch):
-        self.logger.add_scalar(log_string, loss.item(), epoch)
-
-    # Log losses
-    def log_losses(self, epoch, critic_loss, actor_loss):
-        self.add_log("critic_loss", critic_loss, epoch)
-        self.add_log("actor_loss", actor_loss, epoch)
-
-
 def run_reinforce(cfg, logger, trial=None):
 
     # 2) Create the environment agent
-    env_agent = ParallelGymAgent(
-        partial(make_env, cfg.gym_env.env_name, autoreset=False),
-        cfg.algorithm.n_envs,
-        include_last_state=True,
-    ).seed(cfg.algorithm.seed.env)
+    env_agent = get_eval_env_agent(cfg)
 
     reinforce_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
 

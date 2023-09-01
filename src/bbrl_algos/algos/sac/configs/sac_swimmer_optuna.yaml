@@ -12,7 +12,7 @@ hydra:
 optuna:
       study:
         _target_: optuna.create_study
-        study_name: ddpg_pendulum
+        study_name: sac_swimmer
         direction: maximize
         # for a list of optuna pruners, this is here: https://optuna.readthedocs.io/en/stable/reference/pruners.html
         pruner:
@@ -27,9 +27,9 @@ optuna:
 
 logger:
       classname: bbrl.utils.logger.WandbLogger
-      project: "ddpg_study"
-      group: "tune_ddpg"
-      tags: "hp_ddpg"
+      project: "sac_study"
+      group: "tune_sac"
+      tags: "hp_sac"
       job_type: test
       log_dir: ${log_dir}
       cache_size: 10000
@@ -47,7 +47,7 @@ algorithm:
 
       n_envs: 8
       n_steps_train: 32
-      n_steps: 1_000_000
+      n_steps: 300_000
       eval_interval: 5000
       nb_evals: 10
       buffer_size: 1e6

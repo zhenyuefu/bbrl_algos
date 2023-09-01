@@ -33,6 +33,7 @@ from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
+from bbrl_algos.models.envs import get_eval_env_agent_rich
 
 from bbrl.visu.plot_critics import plot_discrete_q
 
@@ -157,12 +158,7 @@ def run_dqn(cfg, logger, trial=None):
         make_env_args=get_arguments(cfg.gym_env_train),
         seed=cfg.algorithm.seed.train,
     )
-    eval_env_agent = ParallelGymAgent(
-        make_env_fn=get_class(cfg.gym_env_eval),
-        num_envs=cfg.algorithm.n_envs_eval,
-        make_env_args=get_arguments(cfg.gym_env_eval),
-        seed=cfg.algorithm.seed.eval,
-    )
+    eval_env_agent = get_eval_env_agent_rich(cfg)
 
     # 2) Create the DQN-like Agent
     train_agent, eval_agent, q_agent, q_agent_target = create_dqn_agent(

@@ -3,6 +3,7 @@ import gym
 # import bbrl_gymnasium is necessary to see the bbrl_gymnasium environments
 import bbrl_gymnasium
 
+from bbrl import get_arguments, get_class
 from typing import Tuple
 from bbrl.agents.gymnasium import make_env, GymAgent, ParallelGymAgent
 from functools import partial
@@ -10,6 +11,23 @@ from functools import partial
 
 assets_path = os.getcwd() + '/../../assets/'
 
+def get_eval_env_agent(cfg):
+    eval_env_agent = ParallelGymAgent(
+        partial(make_env, cfg.gym_env.env_name, autoreset=False),
+        cfg.algorithm.n_envs,
+        include_last_state=True,
+        seed=cfg.algorithm.seed.eval,
+    )
+    return eval_env_agent
+
+def get_eval_env_agent_rich(cfg):
+    eval_env_agent = ParallelGymAgent(
+        make_env_fn=get_class(cfg.gym_env_eval),
+        num_envs=cfg.algorithm.n_envs_eval,
+        make_env_args=get_arguments(cfg.gym_env_eval),
+        seed=cfg.algorithm.seed.eval,
+    )
+    return eval_env_agent
 
 def get_env_agents(
     cfg, *, autoreset=True, include_last_state=True

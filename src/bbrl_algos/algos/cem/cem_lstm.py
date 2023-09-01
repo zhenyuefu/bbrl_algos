@@ -16,6 +16,7 @@ from bbrl_algos.models.loggers import Logger
 from bbrl_algos.wrappers.env_wrappers import FilterWrapper
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
+from bbrl_algos.models.envs import get_eval_env_agent
 
 # Neural network models for actors and critics
 from bbrl_algos.models.actors import (
@@ -70,14 +71,13 @@ def create_CEM_agent(cfg, env_agent):
     )
     ev_agent = Agents(env_agent, policy)
     eval_agent = TemporalAgent(ev_agent)
-    eval_agent.seed(cfg.algorithm.seed)
 
     return eval_agent
 
 
 def run_cem(cfg, logger, trial=None):
 
-    eval_env_agent = create_no_reset_env_agent(cfg)
+    eval_env_agent = get_eval_env_agent(cfg)
 
     pop_size = cfg.algorithm.pop_size
 
@@ -94,7 +94,7 @@ def run_cem(cfg, logger, trial=None):
     nb_steps = 0
 
     # 7) Training loop
-    for epoch in range(cfg.algorithm.max_epochs):
+    while nb_steps < cfg.algorithm.n_steps:
         matrix.update_noise()
         scores = []
         weights = matrix.generate_weights(centroid, pop_size)
@@ -128,9 +128,9 @@ def run_cem(cfg, logger, trial=None):
                     plot_policy(
                         eval_agent.agent.agents[1],
                         eval_env_agent,
+                        best_score,
                         "./cem_plots/",
                         cfg.gym_env.env_name,
-                        best_score,
                         stochastic=False,
                     )
         # Keep only best individuals to compute the new centroid
@@ -144,9 +144,9 @@ def run_cem(cfg, logger, trial=None):
         # Update covariance
         matrix.update_noise()
         matrix.update_covariance(elites_weights)
-        print("---------------------")
-
-
+        if cfg.verbose:
+            print("---------------------")
+    return best_score
 
 # %%
 @hydra.main(

@@ -18,6 +18,7 @@ from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
 from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
 from bbrl.utils.functionalb import gae
+from bbrl_algos.models.envs import get_eval_env_agent
 from bbrl_algos.models.loggers import Logger
 from bbrl.utils.chrono import Chrono
 
@@ -99,11 +100,7 @@ def run_reinforce(cfg):
     best_reward = -10e10
 
     # 2) Create the environment agent
-    env_agent = ParallelGymAgent(
-        partial(make_env, cfg.gym_env.env_name, autoreset=True),
-        cfg.algorithm.n_envs,
-        include_last_state=True,
-    ).seed(cfg.algorithm.seed)
+    env_agent = get_eval_env_agent(cfg)
 
     reinforce_agent, critic_agent = create_reinforce_agent(cfg, env_agent)
 
