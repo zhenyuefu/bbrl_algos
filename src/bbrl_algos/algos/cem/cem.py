@@ -119,7 +119,7 @@ def run_cem(cfg, logger, trial=None):
                 )
             if cfg.save_best and mean_reward > best_score:
                 best_score = mean_reward
-                print("Best score: ", best_score)
+                print(f"nb_steps: {nb_steps}, best score: {best_score:.2f}")
                 save_best(
                     eval_agent, cfg.gym_env.env_name, mean_reward, "./cem_best_agents/", "cem"
                 )
@@ -152,7 +152,8 @@ def run_cem(cfg, logger, trial=None):
 # %%
 @hydra.main(
     config_path="./configs/",
-    config_name="cem_swimmer_optuna.yaml",
+    # config_name="cem_swimmer_optuna.yaml",
+    config_name="cem_swimmer_best.yaml",
     # config_name="cem_mountain_car.yaml",
     # config_name="cem_cartpole.yaml",
     # version_base="1.3",
