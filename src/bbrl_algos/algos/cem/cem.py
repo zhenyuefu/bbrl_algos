@@ -6,18 +6,23 @@ import os
 import torch
 import torch.nn as nn
 import hydra
+import optuna
+
+from omegaconf import DictConfig
 
 from bbrl.workspace import Workspace
 from bbrl.agents import Agents, TemporalAgent
 
-from bbrl_examples.models.loggers import Logger
+from bbrl_algos.models.loggers import Logger
+from bbrl_algos.models.hyper_params import launch_optuna
+from bbrl_algos.models.utils import save_best
 
 # Neural network models for actors and critics
-from bbrl_examples.models.actors import (
+from bbrl_algos.models.actors import (
     ContinuousDeterministicActor,
     DiscreteDeterministicActor,
 )
-from bbrl_examples.models.stochastic_actors import (
+from bbrl_algos.models.stochastic_actors import (
     TunableVariancePPOActor,
     TunableVarianceContinuousActor,
     TunableVarianceContinuousActorExp,
@@ -27,9 +32,9 @@ from bbrl_examples.models.stochastic_actors import (
     DiscreteActor,
     BernoulliActor,
 )
-from bbrl_examples.models.envs import create_no_reset_env_agent
+from bbrl_algos.models.envs import create_no_reset_env_agent
 
-from bbrl.visu.visu_policies import plot_policy
+from bbrl.visu.plot_policies import plot_policy
 
 import matplotlib
 
@@ -70,15 +75,8 @@ def create_CEM_agent(cfg, env_agent):
     return eval_agent
 
 
-def make_gym_env(env_name):
-    env = gym.make(env_name)
-    return env
+def run_cem(cfg, logger, trial=None):
 
-
-def run_cem(cfg):
-    # 1)  Build the  logger
-    torch.manual_seed(cfg.algorithm.seed)
-    logger = Logger(cfg)
     eval_env_agent = create_no_reset_env_agent(cfg)
 
     pop_size = cfg.algorithm.pop_size
@@ -123,17 +121,9 @@ def run_cem(cfg):
             if cfg.save_best and mean_reward > best_score:
                 best_score = mean_reward
                 print("Best score: ", best_score)
-                directory = "./cem_agent/"
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                filename = (
-                    directory
-                    + cfg.gym_env.env_name
-                    + "#cem_basic#team#"
-                    + str(mean_reward.item())
-                    + ".agt"
+                save_best(
+                    eval_agent, cfg.gym_env.env_name, mean_reward, "./cem_best_agents/", "cem"
                 )
-                eval_agent.save_model(filename)
                 if cfg.plot_agents:
                     plot_policy(
                         eval_agent.agent.agents[1],
@@ -157,17 +147,21 @@ def run_cem(cfg):
         print("---------------------")
 
 
+# %%
 @hydra.main(
     config_path="./configs/",
     config_name="cem_mountain_car.yaml",
     # config_name="cem_cartpole.yaml",
-    version_base="1.1",
+    # version_base="1.3",
 )
-def main(cfg):
-    # import torch.multiprocessing as mp
+def main(cfg_raw: DictConfig):
+    torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
-    # mp.set_start_method("spawn")
-    run_cem(cfg)
+    if "optuna" in cfg_raw:
+        launch_optuna(cfg_raw, run_sac)
+    else:
+        logger = Logger(cfg_raw)
+        run_sac(cfg_raw, logger)
 
 
 if __name__ == "__main__":

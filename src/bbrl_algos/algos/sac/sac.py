@@ -358,29 +358,6 @@ def load_best(best_filename):
 
 
 # %%
-def get_trial_value(trial: optuna.Trial, cfg: DictConfig, variable_name: str):
-    # code suivant assez moche, certes, piste d’amélioration possible
-    suggest_type = cfg["suggest_type"]
-    args = cfg.keys() - ["suggest_type"]
-    args_str = ", ".join([f"{arg}={cfg[arg]}" for arg in args])
-    return eval(f'trial.suggest_{suggest_type}("{variable_name}", {args_str})')
-
-
-def get_trial_config(trial: optuna.Trial, cfg: DictConfig):
-    for variable_name in cfg.keys():
-        if type(cfg[variable_name]) != DictConfig:
-            continue
-        else:
-            if "suggest_type" in cfg[variable_name].keys():
-                cfg[variable_name] = get_trial_value(
-                    trial, cfg[variable_name], variable_name
-                )
-            else:
-                cfg[variable_name] = get_trial_config(trial, cfg[variable_name])
-    return cfg
-
-
-# %%
 @hydra.main(
     config_path="./configs/",
     # config_name="sac_cartpolecontinuous.yaml",
