@@ -46,17 +46,31 @@ def get_env_agents(
         wrappers = []
 
     # Train environment
-    train_env_agent = ParallelGymAgent(
-        partial(make_env, cfg.gym_env.env_name, autoreset=autoreset, wrappers=wrappers, xml_file=xml_file),
-        cfg.algorithm.n_envs,
-        include_last_state=include_last_state,
-    ).seed(seed=cfg.algorithm.seed.train)
+    if xml_file is None:
+        train_env_agent = ParallelGymAgent(
+            partial(make_env, cfg.gym_env.env_name, autoreset=autoreset, wrappers=wrappers),
+            cfg.algorithm.n_envs,
+            include_last_state=include_last_state,
+        ).seed(seed=cfg.algorithm.seed.train)
 
-    # Test environment (implictly, autoreset=False, which is always the case for evaluation environments)
-    eval_env_agent = ParallelGymAgent(
-        partial(make_env, cfg.gym_env.env_name, wrappers=wrappers, xml_file=xml_file),
-        cfg.algorithm.nb_evals,
-        include_last_state=include_last_state,
-    ).seed(cfg.algorithm.seed.eval)
+        # Test environment (implictly, autoreset=False, which is always the case for evaluation environments)
+        eval_env_agent = ParallelGymAgent(
+            partial(make_env, cfg.gym_env.env_name, wrappers=wrappers),
+            cfg.algorithm.nb_evals,
+            include_last_state=include_last_state,
+        ).seed(cfg.algorithm.seed.eval)
+    else:
+        train_env_agent = ParallelGymAgent(
+            partial(make_env, cfg.gym_env.env_name, autoreset=autoreset, wrappers=wrappers),
+            cfg.algorithm.n_envs,
+            include_last_state=include_last_state,
+        ).seed(seed=cfg.algorithm.seed.train)
+
+        # Test environment (implictly, autoreset=False, which is always the case for evaluation environments)
+        eval_env_agent = ParallelGymAgent(
+            partial(make_env, cfg.gym_env.env_name, wrappers=wrappers),
+            cfg.algorithm.nb_evals,
+            include_last_state=include_last_state,
+        ).seed(cfg.algorithm.seed.eval)
 
     return train_env_agent, eval_env_agent

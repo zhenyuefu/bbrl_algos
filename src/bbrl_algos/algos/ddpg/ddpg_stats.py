@@ -132,6 +132,7 @@ def run_ddpg(cfg, logger, trial=None):
         if not os.path.exists(directory):
             os.makedirs(directory)
         filename = directory + "ddpg.data"
+        fo = open(filename, "wb")
         stats_data = []
 
     # Training loop
@@ -251,10 +252,15 @@ def run_ddpg(cfg, logger, trial=None):
                     )
 
             if cfg.collect_stats:
-                stats_data.append(rewards.numpy())
-
+                stats_data.append(rewards)
+                
     if cfg.collect_stats:
-        np.savetxt(filename, np.concatenate(stats_data))
+        # All rewards, dimensions (# of evaluations x # of episodes)
+        stats_data = torch.stack(stats_data, axis=-1) 
+        print(np.shape(stats_data))
+        np.savetxt(filename, stats_data.numpy())
+        fo.flush()
+        fo.close()
 
     return best_reward
 
