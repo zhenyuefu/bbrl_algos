@@ -2,6 +2,7 @@ import os
 import gym
 # import bbrl_gymnasium is necessary to see the bbrl_gymnasium environments
 import bbrl_gymnasium
+import gym_torcs
 
 from bbrl import get_arguments, get_class
 from typing import Tuple
