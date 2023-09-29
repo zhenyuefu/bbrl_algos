@@ -18,7 +18,6 @@ from bbrl_algos.models.stochastic_actors import StateDependentVarianceContinuous
 from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
 from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
-from bbrl.utils.functionalb import gae
 from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best

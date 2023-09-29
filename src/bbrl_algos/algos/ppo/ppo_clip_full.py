@@ -18,7 +18,7 @@ from omegaconf import DictConfig
 
 from bbrl import get_arguments, get_class
 
-from bbrl.utils.functionalb import gae
+from bbrl.utils.functional import gae
 from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.loggers import MyLogger, Logger

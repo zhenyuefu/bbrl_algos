@@ -23,10 +23,8 @@ from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
 from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
 from bbrl_algos.models.loggers import Logger
-from bbrl_algos.wrappers.env_wrappers import RocketLanderWrapper
 from bbrl.utils.chrono import Chrono
 
-from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
 from bbrl_algos.models.envs import get_env_agents
 from bbrl_algos.models.hyper_params import launch_optuna

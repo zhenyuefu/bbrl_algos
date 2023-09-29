@@ -17,7 +17,6 @@ from bbrl_algos.models.stochastic_actors import StateDependentVarianceContinuous
 from bbrl_algos.models.stochastic_actors import ConstantVarianceContinuousActor
 from bbrl_algos.models.stochastic_actors import DiscreteActor, BernoulliActor
 from bbrl_algos.models.critics import VAgent
-from bbrl.utils.functionalb import gae
 from bbrl_algos.models.envs import get_eval_env_agent
 from bbrl_algos.models.loggers import Logger
 from bbrl.utils.chrono import Chrono

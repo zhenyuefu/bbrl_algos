@@ -21,7 +21,6 @@ from bbrl_algos.models.critics import VAgent
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
 from bbrl_algos.models.envs import get_eval_env_agent
-from bbrl.utils.functionalb import gae
 from bbrl.utils.chrono import Chrono
 
 # This version is useful only to illustrate how one can compute the log probabilities
