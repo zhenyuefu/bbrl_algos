@@ -31,7 +31,6 @@ from bbrl.agents.gymnasium import ParallelGymAgent
 from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl_algos.models.loggers import Logger
-from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
 from bbrl_algos.models.envs import get_eval_env_agent_rich
 
