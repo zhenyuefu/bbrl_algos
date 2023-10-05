@@ -337,3 +337,4 @@ fabric.properties
 
 # Built Visual Studio Code Extensions
 *.vsix
+src/bbrl_algos/_version.py
