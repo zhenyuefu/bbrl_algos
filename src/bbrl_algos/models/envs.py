@@ -2,12 +2,14 @@ import os
 import gym
 # import bbrl_gymnasium is necessary to see the bbrl_gymnasium environments
 import bbrl_gymnasium
-import gym_torcs
+# import gym_torcs
 
 from bbrl import get_arguments, get_class
 from typing import Tuple
 from bbrl.agents.gymnasium import make_env, GymAgent, ParallelGymAgent
 from functools import partial
+
+from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
 
 
 assets_path = os.getcwd() + '/../../assets/'
@@ -43,6 +45,13 @@ def get_env_agents(
        
     if "wrappers" in cfg.gym_env:
         print ("using wrappers:", cfg.gym_env.wrappers)
+        # wrappers_name_list = cfg.gym_env.wrappers.split(',')
+        wrappers_list = []
+        wr = get_class(cfg.gym_env.wrappers)
+        # for i in range(len(wrappers_name_list)):
+        wrappers_list.append(wr)
+        wrappers = wrappers_list
+        print(wrappers)
     else:
         wrappers = []
 

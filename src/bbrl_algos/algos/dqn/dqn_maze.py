@@ -24,7 +24,7 @@ from gymnasium.wrappers import AutoResetWrapper
 
 # %%
 from bbrl import get_arguments, get_class
-from bbrl.agents import TemporalAgent, Agents
+from bbrl.agents import TemporalAgent, Agents, PrintAgent
 from bbrl.workspace import Workspace
 from bbrl.agents.gymnasium import ParallelGymAgent
 
@@ -32,7 +32,7 @@ from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.utils import save_best
-from bbrl_algos.models.envs import get_eval_env_agent_rich
+from bbrl_algos.models.envs import get_env_agents
 
 from bbrl.visu.plot_critics import plot_discrete_q
 
@@ -77,28 +77,6 @@ def compute_critic_loss(
 
 
 # %%
-def make_wrappers(
-    autoreset: bool,
-) -> List[Callable[[Env], Env]]:
-    return [AutoResetWrapper] if autoreset else []
-
-
-# %%
-def make_env(
-    identifier: str,
-    autoreset: bool,
-    **kwargs,
-) -> Env:
-    env: Env = gym.make(id=identifier, **kwargs)
-    wrappers = make_wrappers(
-        autoreset=autoreset,
-    )
-    for wrapper in wrappers:
-        env = wrapper(env)
-    return env
-
-
-# %%
 def build_mlp(sizes, activation, output_activation=nn.Identity()):
     layers = []
     for j in range(len(sizes) - 1):
@@ -133,7 +111,7 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     )
     q_agent = TemporalAgent(critic)
 
-    tr_agent = Agents(train_env_agent, critic, explorer)
+    tr_agent = Agents(train_env_agent, critic, explorer)  #  PrintAgent()
     ev_agent = Agents(eval_env_agent, critic)
 
     # Get an agent that is executed on a complete workspace
@@ -157,13 +135,7 @@ def run_dqn(cfg, logger, trial=None):
     best_reward = float("-inf")
 
     # 1) Create the environment agent
-    train_env_agent = ParallelGymAgent(
-        make_env_fn=get_class(cfg.gym_env_train),
-        num_envs=cfg.algorithm.n_envs_train,
-        make_env_args=get_arguments(cfg.gym_env_train),
-        seed=cfg.algorithm.seed.train,
-    )
-    eval_env_agent = get_eval_env_agent_rich(cfg)
+    train_env_agent, eval_env_agent = get_env_agents(cfg)
 
     # 2) Create the DQN-like Agent
     train_agent, eval_agent, q_agent = create_dqn_agent(
@@ -280,7 +252,7 @@ def run_dqn(cfg, logger, trial=None):
             if cfg.save_best and best_reward == mean:
                 save_best(
                     eval_agent,
-                    cfg.gym_env_eval.identifier,
+                    cfg.gym_env.env_name,
                     best_reward,
                     "./dqn_best_agents/",
                     "dqn",
@@ -292,7 +264,7 @@ def run_dqn(cfg, logger, trial=None):
                         eval_env_agent,
                         best_reward,
                         "./dqn_plots/",
-                        cfg.gym_env_eval.identifier,
+                        cfg.gym_env.env_name,
                         input_action="policy",
                     )
 

@@ -14,7 +14,7 @@ class FilterWrapper(gym.ObservationWrapper):
             dtype=np.float32,
         )
 
-    def observation(self, observation):
+    def filter(self, observation):
         return np.array([observation[1], observation[3]])
 
 
@@ -26,11 +26,11 @@ class DelayWrapper(gym.ObservationWrapper):
         self.observation_space = env.observation_space
 
     def reset(self, **kwargs):
-        observation = self.env.reset(**kwargs)
+        obs, _ = self.env.reset(**kwargs)
 
-        self.state_buffer = np.zeros((self.N, *observation.shape))
-        self.state_buffer[-1] = observation
-        return self.state_buffer[0]
+        self.state_buffer = np.zeros((self.N, *obs.shape))
+        self.state_buffer[-1] = obs
+        return self.state_buffer[0], {}
 
     def observation(self, observation):
 
@@ -40,8 +40,8 @@ class DelayWrapper(gym.ObservationWrapper):
 
     def step(self, action):
 
-        observation, reward, done, info = self.env.step(action)
-        return self.observation(observation), reward, done, info
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        return self.observation(observation), reward, terminated, truncated, info
 
 
 class RocketLanderWrapper(gym.Wrapper):
@@ -53,12 +53,13 @@ class RocketLanderWrapper(gym.Wrapper):
         super(RocketLanderWrapper, self).__init__(env)
         self.prev_shaping = None
 
-    def reset(self):
+    def reset(self, **kwargs):
         self.prev_shaping = None
-        return self.env.reset()
+        obs, _ = self.env.reset(**kwargs)
+        return obs, {}
 
     def step(self, action):
-        next_state, reward, done, info = self.env.step(action)
+        next_state, reward, terminated, truncated, info = self.env.step(action)
         # reward shaping
         """
         shaping = -0.5 * (self.env.distance + self.env.speed + abs(self.env.angle) ** 2)
@@ -80,7 +81,7 @@ class RocketLanderWrapper(gym.Wrapper):
             shaping += 3.0
         reward += shaping
 
-        return next_state, reward, done, info
+        return next_state, reward, terminated, truncated, info
 
 
 class MazeMDPContinuousWrapper(gym.Wrapper):
@@ -111,23 +112,23 @@ class MazeMDPContinuousWrapper(gym.Wrapper):
         # By contrast with the wrapped environment where the state space is discrete
         return True
 
-    def reset(self):
-        obs = self.env.reset()
+    def reset(self, **kwargs):
+        obs, _ = self.env.reset(**kwargs)
         x = self.env.coord_x[obs]
         y = self.env.coord_y[obs]
         xc = x + random.random()
         yc = y + random.random()
         continuous_obs = [xc, yc]
-        return continuous_obs
-
+        return np.array(continuous_obs, dtype=np.float32), {}
+    
     def step(self, action):
         # Turn the discrete state into a pair of continuous coordinates
         # Take the coordinates of the state and add a random number to x and y to
         # sample anywhere in the [1, 1] cell...
-        next_state, reward, done, info = self.env.step(action)
+        next_state, reward, terminated, truncated, info = self.env.step(action)
         x = self.env.coord_x[next_state]
         y = self.env.coord_y[next_state]
         xc = x + random.random()
         yc = y + random.random()
         next_continuous = [xc, yc]
-        return next_continuous, reward, done, info
+        return np.array(next_continuous, dtype=np.float32), reward, terminated, truncated, info
