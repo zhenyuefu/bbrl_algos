@@ -19,13 +19,16 @@ logger:
 
 gym_env:
   env_name: MazeMDP-v0
+  height: 3
+  width: 3
+  ratio: 0.2
   wrappers: 
     classname: bbrl_algos.wrappers.env_wrappers.MazeMDPContinuousWrapper
   render_mode: rgb_array
 
 algorithm:
   architecture:
-    hidden_sizes: [64, 64]
+    hidden_sizes: [10, 10]
 
   seed:
     train: 32
@@ -40,15 +43,15 @@ algorithm:
     decay: 0.999
 
   buffer:
-    max_size: 15000
+    max_size: 1500
     batch_size: 256
 
-  target_critic_update_interval: 10
-  max_grad_norm: 1.2
+  target_critic_update_interval: 100
+  max_grad_norm: 0.5
 
   nb_evals: 10
   n_envs: 1
-  n_steps_train: 50
+  n_steps_train: 200
 
   optim_n_updates: 3
   discount_factor: 0.99

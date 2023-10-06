@@ -34,7 +34,7 @@ from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.utils import save_best
 from bbrl_algos.models.envs import get_env_agents
 
-from bbrl.visu.plot_critics import plot_discrete_q
+from bbrl.visu.plot_critics import plot_discrete_q, plot_critic
 
 from bbrl.utils.functional import gae
 from bbrl.utils.chrono import Chrono
@@ -43,12 +43,35 @@ from bbrl.utils.chrono import Chrono
 import matplotlib
 import matplotlib.pyplot as plt
 
+from bbrl_gymnasium.envs.maze_mdp import MazeMDPEnv
+from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
+from bbrl.agents.gymnasium import make_env, ParallelGymAgent
+from functools import partial
+
+
+
 matplotlib.use("TkAgg")
+
+
+def local_get_env_agents(cfg):
+    eval_env_agent = ParallelGymAgent(
+        partial(make_env, cfg.gym_env.env_name, autoreset=False, wrappers=[MazeMDPContinuousWrapper], kwargs={"width": 3, "height": 3, "ratio": 0.1, "render_mode":"rgb_array"}),
+        cfg.algorithm.nb_evals,
+        include_last_state=True,
+        seed=cfg.algorithm.seed.eval,
+    )
+    train_env_agent = ParallelGymAgent(
+        partial(make_env, cfg.gym_env.env_name, autoreset=True, wrappers=[MazeMDPContinuousWrapper], kwargs={"width": 3, "height": 3, "ratio": 0.1, "render_mode":"rgb_array"}),
+        cfg.algorithm.n_envs,
+        include_last_state=True,
+        seed=cfg.algorithm.seed.train,
+    )
+    return train_env_agent, eval_env_agent
 
 
 # %%
 def compute_critic_loss(
-    discount_factor, gae_factor, reward, must_bootstrap, q_values, 
+    discount_factor, reward, must_bootstrap, action, q_values, q_target=None
 ):
     """Compute critic loss
     Args:
@@ -62,6 +85,30 @@ def compute_critic_loss(
     Returns:
         torch.Scalar: The loss
     """
+    if q_target is None:
+        q_target = q_values
+    max_q = q_target[1].amax(dim=-1).detach()
+    target = reward[1] + discount_factor * max_q * must_bootstrap[1]
+    act = action[0].unsqueeze(dim=-1)
+    qvals = q_values[0].gather(dim=1, index=act).squeeze(dim=1)
+    return nn.MSELoss()(qvals, target)
+
+"""
+def compute_critic_loss(
+    discount_factor, gae_factor, reward, must_bootstrap, q_values, 
+):
+    Compute critic loss
+    Args:
+        discount_factor (float): The discount factor
+        reward (torch.Tensor): a (2 × T × B) tensor containing the rewards
+        must_bootstrap (torch.Tensor): a (2 × T × B) tensor containing 0 if the episode is completed at time $t$
+        action (torch.LongTensor): a (2 × T) long tensor containing the chosen action
+        q_values (torch.Tensor): a (2 × T × B × A) tensor containing Q values
+        q_target (torch.Tensor, optional): a (2 × T × B × A) tensor containing target Q values
+
+    Returns:
+        torch.Scalar: The loss
+    
     v_values = q_values.max(axis=-1)[0]
     # print(reward.shape, must_bootstrap.shape, v_values.shape)
     advantage = gae(
@@ -74,7 +121,7 @@ def compute_critic_loss(
     td_error = advantage**2
     critic_loss = td_error.mean()
     return critic_loss
-
+"""
 
 # %%
 def build_mlp(sizes, activation, output_activation=nn.Identity()):
@@ -111,7 +158,7 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     )
     q_agent = TemporalAgent(critic)
 
-    tr_agent = Agents(train_env_agent, critic, explorer)  #  PrintAgent()
+    tr_agent = Agents(train_env_agent, critic, explorer) # , PrintAgent())
     ev_agent = Agents(eval_env_agent, critic)
 
     # Get an agent that is executed on a complete workspace
@@ -135,7 +182,7 @@ def run_dqn(cfg, logger, trial=None):
     best_reward = float("-inf")
 
     # 1) Create the environment agent
-    train_env_agent, eval_env_agent = get_env_agents(cfg)
+    train_env_agent, eval_env_agent = local_get_env_agents(cfg)
 
     # 2) Create the DQN-like Agent
     train_agent, eval_agent, q_agent = create_dqn_agent(
@@ -209,9 +256,9 @@ def run_dqn(cfg, logger, trial=None):
         
         critic_loss = compute_critic_loss(
             cfg.algorithm.discount_factor,
-            cfg.algorithm.gae_factor,
             reward,
             must_bootstrap,
+            action,
             q_values,
         )
 
@@ -242,7 +289,7 @@ def run_dqn(cfg, logger, trial=None):
             if mean > best_reward:
                 best_reward = mean
 
-            # print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
+            print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
 
             if trial is not None:
                 trial.report(mean, nb_steps)
@@ -266,6 +313,14 @@ def run_dqn(cfg, logger, trial=None):
                         "./dqn_plots/",
                         cfg.gym_env.env_name,
                         input_action="policy",
+                    )
+                    plot_critic(
+                        critic,
+                        eval_env_agent,
+                        best_reward,
+                        "./dqn_plots2/",
+                        cfg.gym_env.env_name,
+                        input_action=1,
                     )
 
     return best_reward

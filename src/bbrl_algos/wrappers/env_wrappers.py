@@ -107,6 +107,7 @@ class MazeMDPContinuousWrapper(gym.Wrapper):
             dtype=np.float32,
         )
         self.observation_space = gym.spaces.Box(low, high)
+        # print("building maze:", high, low)
 
     def is_continuous_state(self):
         # By contrast with the wrapped environment where the state space is discrete
@@ -128,7 +129,10 @@ class MazeMDPContinuousWrapper(gym.Wrapper):
         next_state, reward, terminated, truncated, info = self.env.step(action)
         x = self.env.coord_x[next_state]
         y = self.env.coord_y[next_state]
+        # if reward > 0 : print("reward_found", x, y, reward)
         xc = x + random.random()
         yc = y + random.random()
         next_continuous = [xc, yc]
+        if truncated or terminated:
+            info = {'final_observation': next_continuous}
         return np.array(next_continuous, dtype=np.float32), reward, terminated, truncated, info
