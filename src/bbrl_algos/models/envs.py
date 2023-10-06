@@ -17,7 +17,7 @@ assets_path = os.getcwd() + '/../../assets/'
 def get_eval_env_agent(cfg):
     eval_env_agent = ParallelGymAgent(
         partial(make_env, cfg.gym_env.env_name, autoreset=False),
-        cfg.algorithm.n_envs,
+        cfg.algorithm.n_envs_eval,
         include_last_state=True,
         seed=cfg.algorithm.seed.eval,
     )
