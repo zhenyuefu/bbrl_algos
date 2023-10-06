@@ -327,8 +327,8 @@ def run_dqn(cfg, logger, trial=None):
 @hydra.main(
     config_path="configs/",
     # config_name="cartpole_wandb_no_optuna.yaml",
-    config_name="cartpole.yaml",
-    # config_name="cartpole_wandb_optuna_choices.yaml",
+    # config_name="cartpole.yaml",
+    config_name="cartpole_wandb_optuna_choices.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
