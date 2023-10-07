@@ -100,10 +100,9 @@ def run_reinforce(cfg, logger, trial=None):
         reinforce_agent(train_workspace, stochastic=True, t=0, stop_variable="env/done")
 
         # Get relevant tensors (size are timestep x n_envs x ....)
-        obs, done, truncated, action_probs, reward, action = train_workspace[
+        obs, terminated, action_probs, reward, action = train_workspace[
             "env/env_obs",
-            "env/done",
-            "env/truncated",
+            "env/terminated",
             "policy/action_probs",
             "env/reward",
             "action",
@@ -115,9 +114,7 @@ def run_reinforce(cfg, logger, trial=None):
             nb_steps += len(action[:, i])
 
         # Determines whether values of the critic should be propagated
-        # True if the episode reached a time limit or if the task was not done
-        # See https://colab.research.google.com/drive/1W9Y-3fa6LsPeR6cBC1vgwBjKfgMwZvP5?usp=sharing
-        must_bootstrap = torch.logical_or(~done, truncated)
+        must_bootstrap = ~terminated
 
         critic_loss, td = compute_critic_loss(cfg, reward, must_bootstrap, v_value)
 

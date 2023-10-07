@@ -190,18 +190,17 @@ def run_ppo_clip(cfg, logger, trial=None):
         # Compute the critic value over the whole workspace
         critic_agent(train_workspace, t=delta_t, n_steps=cfg.algorithm.n_steps)
 
-        done, truncated, reward, action, v_value = train_workspace[
-            "env/done",
-            "env/truncated",
+        terminated, reward, action, v_value = train_workspace[
+            "env/terminated",
             "env/reward",
             "action",
             "critic/v_values",
         ]
 
         # Determines whether values of the critic should be propagated
-        # True if the episode reached a time limit or if the task was not done
-        # See https://colab.research.google.com/drive/1W9Y-3fa6LsPeR6cBC1vgwBjKfgMwZvP5?usp=sharing
-        must_bootstrap = torch.logical_or(~done, truncated)
+        # True if the task was not terminated
+        must_bootstrap = ~terminated
+
 
         # the critic values are clamped to move not too far away from the values of the previous critic
 

@@ -141,10 +141,9 @@ def run_a2c(cfg, logger, trial=None):
 
         transition_workspace = train_workspace.get_transitions()
 
-        v_value, done, truncated, reward, action, action_logp = transition_workspace[
+        v_value, terminated, reward, action, action_logp = transition_workspace[
             "critic/v_values",
-            "env/done",
-            "env/truncated",
+            "env/terminated",
             "env/reward",
             "action",
             "policy/action_logprobs",
@@ -152,9 +151,8 @@ def run_a2c(cfg, logger, trial=None):
 
         nb_steps += action[0].shape[0]
         # Determines whether values of the critic should be propagated
-        # True if the episode reached a time limit or if the task was not done
-        # See https://colab.research.google.com/drive/1erLbRKvdkdDy0Zn1X_JhC01s1QAt4BBj?usp=sharing
-        must_bootstrap = torch.logical_or(~done[1], truncated[1])
+        # True if the task was not terminated.
+        must_bootstrap = ~terminated[1]
 
         # Compute critic loss
         critic_loss, advantages = compute_advantages_loss(

@@ -153,14 +153,13 @@ def run_ddpg(cfg, logger, trial=None):
         for _ in range(cfg.algorithm.optim_n_updates):
             rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
 
-            done, truncated, reward, action = rb_workspace[
-                "env/done", "env/truncated", "env/reward", "action"
+            terminated, truncated, reward, action = rb_workspace[
+                "env/terminated", "env/reward", "action"
             ]
             if nb_steps > cfg.algorithm.learning_starts:
                 # Determines whether values of the critic should be propagated
-                # True if the episode reached a time limit or if the task was not done
-                # See https://colab.research.google.com/drive/1erLbRKvdkdDy0Zn1X_JhC01s1QAt4BBj?usp=sharing
-                must_bootstrap = torch.logical_or(~done[1], truncated[1])
+                # True if the task was not terminated.
+                must_bootstrap = ~terminated[1]
 
                 # Critic update
                 # compute q_values: at t, we have Q(s,a) from the (s,a) in the RB

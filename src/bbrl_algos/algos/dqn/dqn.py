@@ -227,10 +227,9 @@ def run_dqn(cfg, logger, trial=None):
             # The q agent needs to be executed on the rb_workspace workspace (gradients are removed in workspace).
             q_agent(sampled_trans_ws, t=0, n_steps=2, choose_action=False)
 
-            q_values, terminated, truncated, reward, action = sampled_trans_ws[
+            q_values, terminated, reward, action = sampled_trans_ws[
                 "critic/q_values",
                 "env/terminated",
-                "env/truncated",
                 "env/reward",
                 "action",
             ]
@@ -242,8 +241,8 @@ def run_dqn(cfg, logger, trial=None):
             q_target = sampled_trans_ws["critic/q_values"]
 
             # Determines whether values of the critic should be propagated
-            # True if the episode reached a time limit or if the task was not terminated.
-            must_bootstrap = torch.logical_or(~terminated, truncated)
+            # True if the task was not terminated.
+            must_bootstrap = ~terminated
 
             # Store the replay buffer size
             logger.add_log("replay_buffer_size", replay_buffer.size(), nb_steps)
