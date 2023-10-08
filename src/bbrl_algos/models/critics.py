@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -110,6 +111,30 @@ class DiscreteQAgent(NamedCritic):
     def predict_value(self, obs, action):
         q_values = self.model(obs)
         return q_values[action[0].int()]
+
+
+class TabularQAgent(NamedCritic):
+    def __init__(
+        self,
+        nb_states,
+        nb_actions,
+        name="critic",
+        *args,
+        **kwargs,
+    ):
+        super().__init__(name, *args, **kwargs)
+        self.q_table = np.zeros(nb_states, nb_actions)
+        self.is_q_function = True
+
+    def forward(self, t, choose_action=True, **kwargs):
+        obs = self.get(("env/env_obs", t))
+        # print("in critic forward: obs:", obs)
+        q_values = self.q_table[obs,:]
+        self.set((f"{self.name}/q_values", t), q_values)
+        # Sets the action
+        if choose_action:
+            action = q_values.argmax(1)
+            self.set(("action", t), action)
 
 
 class TruncatedQuantileNetwork(NamedCritic):
