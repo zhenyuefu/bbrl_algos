@@ -19,8 +19,6 @@ logger:
 
 gym_env:
   env_name: MazeMDP-v0
-  wrappers: 
-    classname: bbrl_algos.wrappers.env_wrappers.MazeMDPContinuousWrapper
   render_mode: rgb_array
 
 algorithm:
@@ -47,13 +45,16 @@ algorithm:
   max_grad_norm: 0.5
 
   nb_evals: 100
-  n_envs: 1
+  n_envs: 2
+  n_steps_train: 100
+  eval_interval: 2000
 
   optim_n_updates: 3
   discount_factor: 0.99
   gae_factor: 0.8
 
   n_episodes: 1000
+  n_steps: 320_000
 
 
 optimizer:
