@@ -75,7 +75,7 @@ algorithm:
   gae_factor: 0.8
 
   n_episodes: 1000
-  n_steps: 6_000
+  n_steps: 60_000
 
 
 optimizer:
