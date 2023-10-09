@@ -41,7 +41,7 @@ def launch_optuna(cfg_raw, run_func):
             logger.close()
             return trial_result
         except optuna.exceptions.TrialPruned:
-            logger.close(exit_code=1)
+            logger.close()
             return float("-inf")
 
     study = hydra.utils.call(cfg_optuna.study)

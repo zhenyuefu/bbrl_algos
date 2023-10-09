@@ -26,8 +26,8 @@ class Logger:
         self.add_log("reward/median", rewards.median(), nb_steps)
         self.add_log("reward/std", rewards.std(), nb_steps)
 
-    def close(self, exit_code=0) -> None:
-        self.logger.close(exit_code)
+    def close(self) -> None:
+        self.logger.close()
 
 
 class RewardLogger:
