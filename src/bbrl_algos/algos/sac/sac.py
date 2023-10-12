@@ -31,9 +31,10 @@ from bbrl_algos.models.utils import save_best
 from bbrl.visu.plot_policies import plot_policy
 from bbrl.visu.plot_critics import plot_critic
 
+import matplotlib
+
 # HYDRA_FULL_ERROR = 1
 
-import matplotlib
 
 matplotlib.use("TkAgg")
 
@@ -356,9 +357,6 @@ def load_best(best_filename):
     best_agent = torch.load(best_filename)
     return best_agent
 
-
-from gym import envs
-print(envs.registry.all())
 
 # %%
 @hydra.main(

@@ -1,7 +1,4 @@
 import numpy as np
-import gym
-import os
-
 
 import torch
 import torch.nn as nn
@@ -75,7 +72,6 @@ def create_CEM_agent(cfg, env_agent):
 
 
 def run_cem(cfg, logger, trial=None):
-
     eval_env_agent = get_eval_env_agent(cfg)
 
     pop_size = cfg.algorithm.pop_size
@@ -121,7 +117,11 @@ def run_cem(cfg, logger, trial=None):
                 best_score = mean_reward
                 print(f"nb_steps: {nb_steps}, best score: {best_score:.2f}")
                 save_best(
-                    eval_agent, cfg.gym_env.env_name, mean_reward, "./cem_best_agents/", "cem"
+                    eval_agent,
+                    cfg.gym_env.env_name,
+                    mean_reward,
+                    "./cem_best_agents/",
+                    "cem",
                 )
                 # print(cfg.gym_env.env_name)
                 if cfg.plot_agents:

@@ -153,7 +153,7 @@ def run_ddpg(cfg, logger, trial=None):
         for _ in range(cfg.algorithm.optim_n_updates):
             rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
 
-            terminated, truncated, reward, action = rb_workspace[
+            terminated, reward, action = rb_workspace[
                 "env/terminated", "env/reward", "action"
             ]
             if nb_steps > cfg.algorithm.learning_starts:
@@ -252,10 +252,10 @@ def run_ddpg(cfg, logger, trial=None):
 
             if cfg.collect_stats:
                 stats_data.append(rewards)
-                
+
     if cfg.collect_stats:
         # All rewards, dimensions (# of evaluations x # of episodes)
-        stats_data = torch.stack(stats_data, axis=-1) 
+        stats_data = torch.stack(stats_data, axis=-1)
         print(np.shape(stats_data))
         np.savetxt(filename, stats_data.numpy())
         fo.flush()
@@ -269,8 +269,8 @@ def run_ddpg(cfg, logger, trial=None):
     config_path="configs/",
     # config_name="ddpg_cartpole.yaml"
     # config_name="ddpg_pendulum.yaml",
-    # config_name="ddpg_pendulum_optuna.yaml",
-    config_name="ddpg_pendulum_optimise.yaml",
+    config_name="ddpg_pendulum_optuna.yaml",
+    # config_name="ddpg_pendulum_optimise.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)

@@ -22,6 +22,7 @@ from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
 from bbrl_algos.models.envs import get_eval_env_agent
 from bbrl.utils.chrono import Chrono
+from bbrl_algos.models.loggers import Logger
 
 # This version is useful only to illustrate how one can compute the log probabilities
 # of actions a posteriori, rather than online. The online version is clearly more elegant
@@ -78,7 +79,6 @@ def compute_critic_loss(cfg, reward, must_bootstrap, critic):
 
 
 def run_reinforce(cfg, logger, trial=None):
-
     # 2) Create the environment agent
     env_agent = get_eval_env_agent(cfg)
 

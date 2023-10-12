@@ -178,7 +178,7 @@ def compute_actor_loss(ent_coef, t_actor, q_agent, rb_workspace):
 def run_tqc(cfg):
     # 1)  Build the  logger
     logger = Logger(cfg)
-    best_reward = float('-inf')
+    best_reward = float("-inf")
     ent_coef = cfg.algorithm.entropy_coef
 
     # 2) Create the environment agent

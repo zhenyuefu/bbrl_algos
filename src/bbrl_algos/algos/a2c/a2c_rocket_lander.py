@@ -1,8 +1,4 @@
-import sys
-import os
-
 import optuna
-import yaml
 
 from omegaconf import DictConfig
 from bbrl import get_arguments, get_class
@@ -236,6 +232,6 @@ def main(cfg_raw: DictConfig):
         logger = Logger(cfg_raw)
         run_a2c(cfg_raw, logger)
 
+
 if __name__ == "__main__":
     main()
-

@@ -201,7 +201,6 @@ def run_ppo_clip(cfg, logger, trial=None):
         # True if the task was not terminated
         must_bootstrap = ~terminated
 
-
         # the critic values are clamped to move not too far away from the values of the previous critic
 
         with torch.no_grad():

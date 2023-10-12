@@ -1,7 +1,9 @@
 import os
 import gym
+
 # import bbrl_gymnasium is necessary to see the bbrl_gymnasium environments
 import bbrl_gymnasium
+
 # import gym_torcs
 
 from bbrl import get_arguments, get_class
@@ -12,7 +14,8 @@ from functools import partial
 from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
 
 
-assets_path = os.getcwd() + '/../../assets/'
+assets_path = os.getcwd() + "/../../assets/"
+
 
 def get_eval_env_agent(cfg):
     eval_env_agent = ParallelGymAgent(
@@ -23,6 +26,7 @@ def get_eval_env_agent(cfg):
     )
     return eval_env_agent
 
+
 def get_eval_env_agent_rich(cfg):
     eval_env_agent = ParallelGymAgent(
         make_env_fn=get_class(cfg.gym_env_eval),
@@ -32,6 +36,7 @@ def get_eval_env_agent_rich(cfg):
     )
     return eval_env_agent
 
+
 def get_env_agents(
     cfg, *, autoreset=True, include_last_state=True
 ) -> Tuple[GymAgent, GymAgent]:
@@ -39,12 +44,12 @@ def get_env_agents(
 
     if "xml_file" in cfg.gym_env:
         xml_file = assets_path + cfg.gym_env.xml_file
-        print ("loading:", xml_file)
+        print("loading:", xml_file)
     else:
         xml_file = None
-       
+
     if "wrappers" in cfg.gym_env:
-        print ("using wrappers:", cfg.gym_env.wrappers)
+        print("using wrappers:", cfg.gym_env.wrappers)
         # wrappers_name_list = cfg.gym_env.wrappers.split(',')
         wrappers_list = []
         wr = get_class(cfg.gym_env.wrappers)
@@ -58,7 +63,9 @@ def get_env_agents(
     # Train environment
     if xml_file is None:
         train_env_agent = ParallelGymAgent(
-            partial(make_env, cfg.gym_env.env_name, autoreset=autoreset, wrappers=wrappers),
+            partial(
+                make_env, cfg.gym_env.env_name, autoreset=autoreset, wrappers=wrappers
+            ),
             cfg.algorithm.n_envs,
             include_last_state=include_last_state,
         ).seed(seed=cfg.algorithm.seed.train)
@@ -71,7 +78,9 @@ def get_env_agents(
         ).seed(cfg.algorithm.seed.eval)
     else:
         train_env_agent = ParallelGymAgent(
-            partial(make_env, cfg.gym_env.env_name, autoreset=autoreset, wrappers=wrappers),
+            partial(
+                make_env, cfg.gym_env.env_name, autoreset=autoreset, wrappers=wrappers
+            ),
             cfg.algorithm.n_envs,
             include_last_state=include_last_state,
         ).seed(seed=cfg.algorithm.seed.train)

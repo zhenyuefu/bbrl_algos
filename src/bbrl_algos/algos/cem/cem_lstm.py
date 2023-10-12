@@ -1,7 +1,4 @@
 import numpy as np
-import gym
-import os
-
 
 import torch
 import torch.nn as nn
@@ -76,7 +73,6 @@ def create_CEM_agent(cfg, env_agent):
 
 
 def run_cem(cfg, logger, trial=None):
-
     eval_env_agent = get_eval_env_agent(cfg)
 
     pop_size = cfg.algorithm.pop_size
@@ -122,7 +118,11 @@ def run_cem(cfg, logger, trial=None):
                 best_score = mean_reward
                 print("Best score: ", best_score)
                 save_best(
-                    eval_agent, cfg.gym_env.env_name, mean_reward, "./cem_best_agents/", "cem"
+                    eval_agent,
+                    cfg.gym_env.env_name,
+                    mean_reward,
+                    "./cem_best_agents/",
+                    "cem",
                 )
                 if cfg.plot_agents:
                     plot_policy(
@@ -148,6 +148,7 @@ def run_cem(cfg, logger, trial=None):
             print("---------------------")
     return best_score
 
+
 # %%
 @hydra.main(
     config_path="./configs/",
@@ -159,10 +160,10 @@ def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     if "optuna" in cfg_raw:
-        launch_optuna(cfg_raw, run_sac)
+        launch_optuna(cfg_raw, run_cem)
     else:
         logger = Logger(cfg_raw)
-        run_sac(cfg_raw, logger)
+        run_cem(cfg_raw, logger)
 
 
 if __name__ == "__main__":

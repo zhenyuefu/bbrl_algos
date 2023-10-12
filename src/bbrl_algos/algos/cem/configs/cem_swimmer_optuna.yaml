@@ -47,7 +47,7 @@ algorithm:
       nb_evals: 10
       n_steps: 300_000
       noise_multiplier: 0.99
-      pop_size: 
+      pop_size:
             suggest_type: categorical
             choices:
                   - 10

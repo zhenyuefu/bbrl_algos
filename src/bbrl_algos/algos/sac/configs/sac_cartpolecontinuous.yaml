@@ -8,14 +8,14 @@
             every_n_seconds: 10
 
       algorithm:
-            
+
             seed:
                   train: 335
                   eval: 983
                   q: 123
                   explorer: 456
                   torch: 789
-                  
+
             nb_seeds: 1
             n_envs: 8
             n_steps_train: 32

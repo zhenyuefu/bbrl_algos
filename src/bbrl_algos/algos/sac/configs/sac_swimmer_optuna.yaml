@@ -37,7 +37,7 @@ logger:
       verbose: False
 
 algorithm:
-            
+
       seed:
             train: 335
             eval: 983

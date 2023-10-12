@@ -9,7 +9,7 @@
             every_n_seconds: 10
 
       algorithm:
-            
+
             seed:
                   train: 335
                   eval: 983

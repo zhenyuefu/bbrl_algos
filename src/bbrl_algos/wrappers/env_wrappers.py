@@ -33,13 +33,11 @@ class DelayWrapper(gym.ObservationWrapper):
         return self.state_buffer[0], {}
 
     def observation(self, observation):
-
         self.state_buffer = np.roll(self.state_buffer, shift=-1, axis=0)
         self.state_buffer[-1] = observation
         return self.state_buffer[0]
 
     def step(self, action):
-
         observation, reward, terminated, truncated, info = self.env.step(action)
         return self.observation(observation), reward, terminated, truncated, info
 
@@ -121,7 +119,7 @@ class MazeMDPContinuousWrapper(gym.Wrapper):
         yc = y + random.random()
         continuous_obs = [xc, yc]
         return np.array(continuous_obs, dtype=np.float32), {}
-    
+
     def step(self, action):
         # Turn the discrete state into a pair of continuous coordinates
         # Take the coordinates of the state and add a random number to x and y to
@@ -134,5 +132,11 @@ class MazeMDPContinuousWrapper(gym.Wrapper):
         yc = y + random.random()
         next_continuous = [xc, yc]
         if truncated or terminated:
-            info = {'final_observation': next_continuous}
-        return np.array(next_continuous, dtype=np.float32), reward, terminated, truncated, info
+            info = {"final_observation": next_continuous}
+        return (
+            np.array(next_continuous, dtype=np.float32),
+            reward,
+            terminated,
+            truncated,
+            info,
+        )

@@ -8,7 +8,7 @@
       every_n_seconds: 10
 
     algorithm:
-      
+
       seed:
         env: 2
         q: 1

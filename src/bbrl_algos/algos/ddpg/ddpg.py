@@ -243,6 +243,7 @@ def run_ddpg(cfg, logger, trial=None):
                         best_reward,
                         "./ddpg_plots/",
                         cfg.gym_env.env_name,
+                        input_action=None,
                     )
 
     return best_reward

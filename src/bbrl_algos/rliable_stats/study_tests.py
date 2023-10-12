@@ -43,38 +43,58 @@ from multiprocessing import Pool
 import time
 import numpy as np
 
-sys.path.append('../')
 from bbrl_algos.rliable_stats.distributions import sample, get_distribution_pairs
 from bbrl_algos.rliable_stats.tests import tests_list, run_test
 
-save = True # save results
+sys.path.append("../")
 
-effect_sizes = [0, 0.3, 0.5, 1., 2., 3., 5.] # relative effect sizes
+save = True  # save results
+
+effect_sizes = [0, 0.3, 0.5, 1.0, 2.0, 3.0, 5.0]  # relative effect sizes
 sample_sizes = [2, 3, 5, 10, 20, 30, 40, 50, 100]
 
 nb_repet = 10
 
-sac_perfs = np.loadtxt('./data_files/sac_hc_final_perfs.txt')
-td3_perfs = np.loadtxt('./data_files/td3_hc_final_perfs.txt')
+sac_perfs = np.loadtxt("./data_files/sac_hc_final_perfs.txt")
+td3_perfs = np.loadtxt("./data_files/td3_hc_final_perfs.txt")
+
 
 def compute_stats(distrib):
     results_array = np.zeros([len(tests_list), len(sample_sizes), len(effect_sizes)])
-    print('\t Computing statistical power for', distrib, 'distribution.')
+    print("\t Computing statistical power for", distrib, "distribution.")
 
     for i_t, test in enumerate(tests_list):
-        if test == 'Mann-Whitney' or test=='Ranked t-test':
-            median=True # set median to true when the test compares medians
+        if test == "Mann-Whitney" or test == "Ranked t-test":
+            median = True  # set median to true when the test compares medians
         else:
-            median=False
+            median = False
 
-        print('\t \t Computing statistical power for', test)
+        print("\t \t Computing statistical power for", test)
         for i_s, sample_size in enumerate(sample_sizes):
             for i_e, effect in enumerate(effect_sizes):
                 rejections = 0
                 for i in range(nb_repet):
-                    data1 = sample(sac_perfs, td3_perfs, distrib=distrib[0], size=sample_size, std_ratio=std_ratio[0], shift=0, median=median)
-                    data2 = sample(sac_perfs, td3_perfs, distrib=distrib[1], size=sample_size, std_ratio=std_ratio[1], shift=effect, median=median)
-                    rejection = run_test(test_id=test, data1=data1, data2=data2, alpha=0.05)
+                    data1 = sample(
+                        sac_perfs,
+                        td3_perfs,
+                        distrib=distrib[0],
+                        size=sample_size,
+                        std_ratio=std_ratio[0],
+                        shift=0,
+                        median=median,
+                    )
+                    data2 = sample(
+                        sac_perfs,
+                        td3_perfs,
+                        distrib=distrib[1],
+                        size=sample_size,
+                        std_ratio=std_ratio[1],
+                        shift=effect,
+                        median=median,
+                    )
+                    rejection = run_test(
+                        test_id=test, data1=data1, data2=data2, alpha=0.05
+                    )
                     # check that the test did not reject for a false reason
                     if effect > 0 and rejection and data1.mean() > data2.mean():
                         rejection = False
@@ -84,21 +104,31 @@ def compute_stats(distrib):
                 results_array[i_t, i_s, i_e] = rejection_rate
 
     if save:
-        with open('./data_files/results_' + STUDY + '_' + distrib[0] + '_' + distrib[1] + '.pk', 'wb') as f:
+        with open(
+            "./data_files/results_"
+            + STUDY
+            + "_"
+            + distrib[0]
+            + "_"
+            + distrib[1]
+            + ".pk",
+            "wb",
+        ) as f:
             pickle.dump(results_array, f)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--study', type=str, default='equal_dist_equal_var')
+    parser.add_argument("--study", type=str, default="equal_dist_equal_var")
     args = parser.parse_args()
     STUDY = args.study
-    print('Study:', STUDY)
-    if STUDY == 'unequal_dist_unequal_var_1':
+    print("Study:", STUDY)
+    if STUDY == "unequal_dist_unequal_var_1":
         # include td3 and sac in that study
-        distributions_pair_idx = [(0, 1), (0, 2), (1, 2) , (4, 3)]
-    elif STUDY == 'unequal_dist_unequal_var_2':
+        distributions_pair_idx = [(0, 1), (0, 2), (1, 2), (4, 3)]
+    elif STUDY == "unequal_dist_unequal_var_2":
         # include td3 and sac in that study
         distributions_pair_idx = [(0, 1), (0, 2), (1, 2), (3, 4)]
     else:
@@ -110,6 +140,4 @@ if __name__ == '__main__':
     with Pool(5) as p:
         p.map(compute_stats, distrib_list)
 
-
-    print('Done in', time.time() - start)
-
+    print("Done in", time.time() - start)

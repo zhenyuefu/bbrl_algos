@@ -4,7 +4,14 @@ import bootstrapped.bootstrap as bs
 import bootstrapped.compare_functions as bs_compare
 import bootstrapped.stats_functions as bs_stats
 
-tests_list = ['t-test', "Welch t-test", 'Mann-Whitney', 'Ranked t-test', 'bootstrap', 'permutation']
+tests_list = [
+    "t-test",
+    "Welch t-test",
+    "Mann-Whitney",
+    "Ranked t-test",
+    "bootstrap",
+    "permutation",
+]
 
 
 def run_permutation_test(all_data, n1, n2):
@@ -28,13 +35,20 @@ def run_test(test_id, data1, data2, alpha=0.05):
     n1 = data1.size
     n2 = data2.size
 
-    if test_id == 'bootstrap':
+    if test_id == "bootstrap":
         assert alpha < 1 and alpha > 0, "alpha should be between 0 and 1"
-        res = bs.bootstrap_ab(data1, data2, bs_stats.mean, bs_compare.difference, alpha=alpha, num_iterations=1000)
+        res = bs.bootstrap_ab(
+            data1,
+            data2,
+            bs_stats.mean,
+            bs_compare.difference,
+            alpha=alpha,
+            num_iterations=1000,
+        )
         rejection = np.sign(res.upper_bound) == np.sign(res.lower_bound)
         return rejection
 
-    elif test_id == 't-test':
+    elif test_id == "t-test":
         _, p = ttest_ind(data1, data2, equal_var=True)
         return p < alpha
 
@@ -42,20 +56,20 @@ def run_test(test_id, data1, data2, alpha=0.05):
         _, p = ttest_ind(data1, data2, equal_var=False)
         return p < alpha
 
-    elif test_id == 'Mann-Whitney':
-        _, p = mannwhitneyu(data1, data2, alternative='two-sided')
+    elif test_id == "Mann-Whitney":
+        _, p = mannwhitneyu(data1, data2, alternative="two-sided")
         return p < alpha
 
-    elif test_id == 'Ranked t-test':
+    elif test_id == "Ranked t-test":
         all_data = np.concatenate([data1.copy(), data2.copy()], axis=0)
         ranks = rankdata(all_data)
-        ranks1 = ranks[: n1]
-        ranks2 = ranks[n1:n1 + n2]
+        ranks1 = ranks[:n1]
+        ranks2 = ranks[n1 : n1 + n2]
         assert ranks2.size == n2
         _, p = ttest_ind(ranks1, ranks2, equal_var=True)
         return p < alpha
 
-    elif test_id == 'permutation':
+    elif test_id == "permutation":
         all_data = np.concatenate([data1.copy(), data2.copy()], axis=0)
         delta = np.abs(data1.mean() - data2.mean())
         num_samples = 1000
