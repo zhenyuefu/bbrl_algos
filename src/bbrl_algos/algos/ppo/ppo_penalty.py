@@ -9,6 +9,7 @@ for a full description of all the coding tricks that should be integrated
 import sys
 import os
 import copy
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -134,6 +135,8 @@ def compute_critic_loss(advantage):
 def compute_penalty_policy_loss(cfg, advantage, ratio, kl_loss):
     """Computes the PPO loss including KL regularization"""
     policy_loss = (advantage * ratio - cfg.algorithm.beta * kl_loss).mean()
+    # print("a:", advantage * ratio)
+    # print("k", cfg.algorithm.beta * kl_loss)
     return policy_loss
 
 
@@ -141,6 +144,13 @@ def run_ppo_penalty(cfg, logger, trial=None):
     best_reward = float("-inf")
     nb_steps = 0
     tmp_steps = 0
+    if cfg.collect_stats:
+        directory = "./ppo_data/"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        filename = directory + "ppo.data"
+        fo = open(filename, "wb")
+        stats_data = []
 
     train_env_agent, eval_env_agent = get_env_agents(cfg)
 
@@ -254,9 +264,8 @@ def run_ppo_penalty(cfg, logger, trial=None):
             else:
                 sample_workspace = transition_workspace
 
-            with torch.no_grad():
-                kl_agent(sample_workspace, t=0, n_steps=1)
-                kl = sample_workspace["kl"][0]
+            kl_agent(sample_workspace, t=0, n_steps=1)
+            kl = sample_workspace["kl"][0]
 
             # Compute the probability of the played actions according to the current policy
             # We do not replay the action: we use the one stored into the dataset
@@ -289,7 +298,7 @@ def run_ppo_penalty(cfg, logger, trial=None):
 
             # Store the losses for tensorboard display
             logger.log_losses(critic_loss, entropy_loss, policy_loss, nb_steps)
-            logger.add_log("advantage", advantage.mean(), nb_steps)
+            logger.add_log("advantage", policy_advantage.mean(), nb_steps)
 
             loss = loss_policy + loss_entropy
 
@@ -344,12 +353,23 @@ def run_ppo_penalty(cfg, logger, trial=None):
                         "./ppo_plots/",
                         cfg.gym_env.env_name,
                     )
+            if cfg.collect_stats:
+                stats_data.append(rewards)
 
             if trial is not None:
                 trial.report(mean, nb_steps)
                 if trial.should_prune():
                     raise optuna.TrialPruned()
-    return mean
+
+    if cfg.collect_stats:
+        # All rewards, dimensions (# of evaluations x # of episodes)
+        stats_data = torch.stack(stats_data, axis=-1)
+        print(np.shape(stats_data))
+        np.savetxt(filename, stats_data.numpy())
+        fo.flush()
+        fo.close()
+
+    return best_reward
 
 
 @hydra.main(

@@ -1,6 +1,6 @@
       save_best: True
-      plot_agents: True
-      collect_stats: False
+      plot_agents: False
+      collect_stats: True
 
       logger:
             classname: bbrl.utils.logger.TFLogger
@@ -17,7 +17,7 @@
 
             max_grad_norm: 0.5
             n_envs: 10
-            n_steps_train: 48
+            n_steps_train: 50
             n_steps: 300000
             eval_interval: 1000
             nb_evals: 10
@@ -30,13 +30,14 @@
             policy_coef: 1
             opt_epochs: 3
             batch_size: 16
-            beta: 0.0
+            beta: 5.
             policy_type: DiscreteActor
             architecture:
                   policy_hidden_size: [64, 64]
                   critic_hidden_size: [64, 64]
+
       gym_env:
-        env_name: CartPole-v1
+            env_name: CartPole-v1
 
       optimizer:
         classname: torch.optim.Adam

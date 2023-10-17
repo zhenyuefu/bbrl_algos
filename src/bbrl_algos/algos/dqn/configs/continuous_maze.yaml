@@ -1,4 +1,3 @@
-# Caution: use only the 'suggest_type' in case of using optuna
 save_best: True
 plot_agents: True
 collect_stats: False

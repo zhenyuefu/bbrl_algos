@@ -6,6 +6,8 @@
 #
 
 import copy
+import os
+import numpy as np
 from typing import Callable, List
 
 import hydra
@@ -23,25 +25,55 @@ from gymnasium.wrappers import AutoResetWrapper
 
 # %%
 from bbrl import get_arguments, get_class
-from bbrl.agents import TemporalAgent, Agents
+from bbrl.agents import TemporalAgent, Agents, PrintAgent
 from bbrl.workspace import Workspace
-from bbrl.agents.gymnasium import ParallelGymAgent
-from bbrl.utils.replay_buffer import ReplayBuffer
 
 from bbrl_algos.models.exploration_agents import EGreedyActionSelector
 from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl_algos.models.loggers import Logger
-from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
-from bbrl_algos.models.envs import get_eval_env_agent_rich
 
-from bbrl.visu.plot_critics import plot_discrete_q
+from bbrl.visu.plot_critics import plot_discrete_q, plot_critic
+from bbrl_algos.models.hyper_params import launch_optuna
+
+from bbrl.utils.functional import gae
+from bbrl.utils.chrono import Chrono
 
 # HYDRA_FULL_ERROR = 1
 import matplotlib
 import matplotlib.pyplot as plt
 
+from bbrl_gymnasium.envs.maze_mdp import MazeMDPEnv
+from bbrl_algos.wrappers.env_wrappers import MazeMDPContinuousWrapper
+from bbrl.agents.gymnasium import make_env, ParallelGymAgent
+from functools import partial
+
+
 matplotlib.use("TkAgg")
+
+
+def local_get_env_agents(cfg):
+    eval_env_agent = ParallelGymAgent(
+        partial(
+            make_env,
+            cfg.gym_env.env_name,
+            autoreset=False,
+        ),
+        cfg.algorithm.nb_evals,
+        include_last_state=True,
+        seed=cfg.algorithm.seed.eval,
+    )
+    train_env_agent = ParallelGymAgent(
+        partial(
+            make_env,
+            cfg.gym_env.env_name,
+            autoreset=True,
+        ),
+        cfg.algorithm.n_envs,
+        include_last_state=True,
+        seed=cfg.algorithm.seed.train,
+    )
+    return train_env_agent, eval_env_agent
 
 
 # %%
@@ -69,35 +101,35 @@ def compute_critic_loss(
     return nn.MSELoss()(qvals, target)
 
 
-# %%
-def make_wrappers(
-    autoreset: bool,
-) -> List[Callable[[Env], Env]]:
-    return [AutoResetWrapper] if autoreset else []
+"""
+def compute_critic_loss(
+    discount_factor, gae_factor, reward, must_bootstrap, q_values,
+):
+    Compute critic loss
+    Args:
+        discount_factor (float): The discount factor
+        reward (torch.Tensor): a (2 × T × B) tensor containing the rewards
+        must_bootstrap (torch.Tensor): a (2 × T × B) tensor containing 0 if the episode is completed at time $t$
+        action (torch.LongTensor): a (2 × T) long tensor containing the chosen action
+        q_values (torch.Tensor): a (2 × T × B × A) tensor containing Q values
+        q_target (torch.Tensor, optional): a (2 × T × B × A) tensor containing target Q values
 
+    Returns:
+        torch.Scalar: The loss
 
-# %%
-def make_env(
-    identifier: str,
-    autoreset: bool,
-    **kwargs,
-) -> Env:
-    env: Env = gym.make(id=identifier, **kwargs)
-    wrappers = make_wrappers(
-        autoreset=autoreset,
+    v_values = q_values.max(axis=-1)[0]
+    # print(reward.shape, must_bootstrap.shape, v_values.shape)
+    advantage = gae(
+        v_values,
+        reward,
+        must_bootstrap,
+        discount_factor,
+        gae_factor,
     )
-    for wrapper in wrappers:
-        env = wrapper(env)
-    return env
-
-
-# %%
-def build_mlp(sizes, activation, output_activation=nn.Identity()):
-    layers = []
-    for j in range(len(sizes) - 1):
-        act = activation if j < len(sizes) - 2 else output_activation
-        layers += [nn.Linear(sizes[j], sizes[j + 1]), act]
-    return nn.Sequential(*layers)
+    td_error = advantage**2
+    critic_loss = td_error.mean()
+    return critic_loss
+"""
 
 
 # %%
@@ -109,6 +141,7 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     # act_shape = act_space.shape if len(act_space.shape) > 0 else act_space.n
 
     state_dim, action_dim = train_env_agent.get_obs_and_actions_sizes()
+    print(cfg_algo.architecture.hidden_sizes)
 
     critic = DiscreteQAgent(
         state_dim=state_dim,
@@ -116,7 +149,6 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
         action_dim=action_dim,
         seed=cfg_algo.seed.q,
     )
-    critic_target = copy.deepcopy(critic)
 
     explorer = EGreedyActionSelector(
         name="action_selector",
@@ -126,16 +158,15 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
         seed=cfg_algo.seed.explorer,
     )
     q_agent = TemporalAgent(critic)
-    q_agent_target = TemporalAgent(critic_target)
 
-    tr_agent = Agents(train_env_agent, critic, explorer)
+    tr_agent = Agents(train_env_agent, critic, explorer)  # , PrintAgent())
     ev_agent = Agents(eval_env_agent, critic)
 
     # Get an agent that is executed on a complete workspace
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
 
-    return train_agent, eval_agent, q_agent, q_agent_target
+    return train_agent, eval_agent, q_agent
 
 
 # %%
@@ -150,33 +181,33 @@ def setup_optimizer(optimizer_cfg, q_agent):
 # %%
 def run_dqn(cfg, logger, trial=None):
     best_reward = float("-inf")
+    if cfg.collect_stats:
+        directory = "./dqn_data/"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        filename = directory + "dqn.data"
+        fo = open(filename, "wb")
+        stats_data = []
 
     # 1) Create the environment agent
-    train_env_agent = ParallelGymAgent(
-        make_env_fn=get_class(cfg.gym_env_train),
-        num_envs=cfg.algorithm.n_envs_train,
-        make_env_args=get_arguments(cfg.gym_env_train),
-        seed=cfg.algorithm.seed.train,
-    )
-    eval_env_agent = get_eval_env_agent_rich(cfg)
+    train_env_agent, eval_env_agent = local_get_env_agents(cfg)
+    print(train_env_agent.envs[0])
+    print(eval_env_agent.envs[0])
+    train_env_agent.envs[0].env.env.init_draw("The train maze")
 
     # 2) Create the DQN-like Agent
-    train_agent, eval_agent, q_agent, q_agent_target = create_dqn_agent(
+    train_agent, eval_agent, q_agent = create_dqn_agent(
         cfg.algorithm, train_env_agent, eval_env_agent
     )
 
     # 3) Create the training workspace
     train_workspace = Workspace()  # Used for training
 
-    # 4) Create the replay buffer
-    replay_buffer = ReplayBuffer(max_size=cfg.algorithm.buffer.max_size)
-
     # 5) Configure the optimizer
     optimizer = setup_optimizer(cfg.optimizer, q_agent)
 
     # 6) Define the steps counters
     nb_steps = 0
-    tmp_steps_target_update = 0
     tmp_steps_eval = 0
 
     while nb_steps < cfg.algorithm.n_steps:
@@ -215,71 +246,44 @@ def run_dqn(cfg, logger, trial=None):
 
         nb_steps += transition_workspace.batch_size()
 
-        # Store the transition in the replay buffer
-        replay_buffer.put(transition_workspace)
+        # The q agent needs to be executed on the rb_workspace workspace (gradients are removed in workspace).
+        q_agent(transition_workspace, t=0, n_steps=2, choose_action=False)
 
-        for _ in range(cfg.algorithm.optim_n_updates):
-            # Sample a batch from the replay buffer
-            sampled_trans_ws = replay_buffer.get_shuffled(
-                cfg.algorithm.buffer.batch_size
-            )
+        q_values, terminated, reward, action = transition_workspace[
+            "critic/q_values",
+            "env/terminated",
+            "env/reward",
+            "action",
+        ]
 
-            # The q agent needs to be executed on the rb_workspace workspace (gradients are removed in workspace).
-            q_agent(sampled_trans_ws, t=0, n_steps=2, choose_action=False)
+        # Determines whether values of the critic should be propagated
+        # True if the task was not terminated.
+        must_bootstrap = ~terminated
 
-            q_values, terminated, reward, action = sampled_trans_ws[
-                "critic/q_values",
-                "env/terminated",
-                "env/reward",
-                "action",
-            ]
+        critic_loss = compute_critic_loss(
+            cfg.algorithm.discount_factor,
+            reward,
+            must_bootstrap,
+            action,
+            q_values,
+        )
 
-            with torch.no_grad():
-                q_agent_target(sampled_trans_ws, t=0, n_steps=2)
+        # Store the loss
+        logger.add_log("critic_loss", critic_loss, nb_steps)
 
-            # Compute the target q values
-            q_target = sampled_trans_ws["critic/q_values"]
+        optimizer.zero_grad()
+        critic_loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            q_agent.parameters(), cfg.algorithm.max_grad_norm
+        )
 
-            # Determines whether values of the critic should be propagated
-            # True if the task was not terminated.
-            must_bootstrap = ~terminated
-
-            # Store the replay buffer size
-            logger.add_log("replay_buffer_size", replay_buffer.size(), nb_steps)
-
-            if replay_buffer.size() > cfg.algorithm.buffer.learning_starts:
-                # Compute critic loss
-                critic_loss = compute_critic_loss(
-                    cfg.algorithm.discount_factor,
-                    reward,
-                    must_bootstrap,
-                    action,
-                    q_values,
-                    q_target,
-                )
-
-                # Store the loss
-                logger.add_log("critic_loss", critic_loss, nb_steps)
-
-                optimizer.zero_grad()
-                critic_loss.backward()
-                torch.nn.utils.clip_grad_norm_(
-                    q_agent.parameters(), cfg.algorithm.max_grad_norm
-                )
-                optimizer.step()
-
-        # Update the target network
-        if (
-            nb_steps - tmp_steps_target_update
-            > cfg.algorithm.target_critic_update_interval
-        ):
-            tmp_steps_target_update = nb_steps
-            q_agent_target.agent = copy.deepcopy(q_agent.agent)
+        optimizer.step()
 
         # Evaluate the agent
         if nb_steps - tmp_steps_eval > cfg.algorithm.eval_interval:
             tmp_steps_eval = nb_steps
             eval_workspace = Workspace()  # Used for evaluation
+            # eval_env_agent.envs[0].init_draw("The eval maze")
             eval_agent(
                 eval_workspace,
                 t=0,
@@ -293,7 +297,9 @@ def run_dqn(cfg, logger, trial=None):
             if mean > best_reward:
                 best_reward = mean
 
-            print(f"nb_steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
+            print(
+                f"nb_steps: {nb_steps}, reward: {mean:.02f}, best: {best_reward:.02f}"
+            )
 
             if trial is not None:
                 trial.report(mean, nb_steps)
@@ -303,7 +309,7 @@ def run_dqn(cfg, logger, trial=None):
             if cfg.save_best and best_reward == mean:
                 save_best(
                     eval_agent,
-                    cfg.gym_env_eval.identifier,
+                    cfg.gym_env.env_name,
                     best_reward,
                     "./dqn_best_agents/",
                     "dqn",
@@ -315,19 +321,42 @@ def run_dqn(cfg, logger, trial=None):
                         eval_env_agent,
                         best_reward,
                         "./dqn_plots/",
-                        cfg.gym_env_eval.identifier,
+                        cfg.gym_env.env_name,
                         input_action="policy",
                     )
+                    plot_discrete_q(
+                        critic,
+                        eval_env_agent,
+                        best_reward,
+                        "./dqn_plots2/",
+                        cfg.gym_env.env_name,
+                        input_action=None,
+                    )
+            if cfg.collect_stats:
+                stats_data.append(rewards)
 
-    return mean
+            if trial is not None:
+                trial.report(mean, nb_steps)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+
+    if cfg.collect_stats:
+        # All rewards, dimensions (# of evaluations x # of episodes)
+        stats_data = torch.stack(stats_data, axis=-1)
+        print(np.shape(stats_data))
+        np.savetxt(filename, stats_data.numpy())
+        fo.flush()
+        fo.close()
+
+    return best_reward
 
 
 # %%
 @hydra.main(
     config_path="configs/",
-    # config_name="cartpole_wandb_no_optuna.yaml",
-    # config_name="cartpole.yaml",
-    config_name="cartpole_wandb_optuna_choices.yaml",
+    # config_name="continuous_maze.yaml",
+    config_name="cartpole.yaml",
+    # config_name="cartpole_wandb_optuna_choices.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
