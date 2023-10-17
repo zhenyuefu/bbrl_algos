@@ -1,5 +1,6 @@
     save_best: True
-    plot_agents: True
+    plot_agents: False
+    collect_stats: True
 
     logger:
       classname: bbrl.utils.logger.TFLogger
@@ -15,13 +16,13 @@
         torch: 789
 
       max_grad_norm: 0.5
-      n_envs: 8
-      n_steps: 20
+      n_envs: 10
+      n_steps_train: 50
       eval_interval: 2000
       nb_evals: 10
       gae: 0.9
-      max_epochs: 8000
-      beta: 0.1
+      n_steps: 300_000
+      beta: 5.
       discount_factor: 0.95
       clip_range: 0.2
       clip_range_vf: 0
@@ -30,6 +31,7 @@
       policy_coef: 1
       opt_epochs: 3
       batch_size: 16
+      policy_type: DiscreteActor
       architecture:
         policy_hidden_size: [256, 256]
         critic_hidden_size: [256, 256]

@@ -35,7 +35,7 @@ rc("text", usetex=False)
 # from scipy.stats import find_repeats
 
 colors = sns.color_palette("colorblind")
-xlabels = ["sac", "td3"]
+xlabels = ["dqn", "ppo"]
 color_idxs = [0, 3, 4, 2, 1, 7, 8]
 color_dict = dict(zip(xlabels, [colors[idx] for idx in color_idxs]))
 
@@ -43,8 +43,8 @@ color_dict = dict(zip(xlabels, [colors[idx] for idx in color_idxs]))
 def run_aggregates(data_file1, data_file2):
     data1 = np.expand_dims(np.array(np.loadtxt(data_file1)), axis=1)
     data2 = np.expand_dims(np.array(np.loadtxt(data_file2)), axis=1)
-    score_dict = {"sac": data1, "td3": data2}
-    algorithms = ["sac", "td3"]
+    score_dict = {"dqn": data1, "ppo": data2}
+    algorithms = ["dqn", "ppo"]
 
     aggregate_func = lambda x: np.array(
         [
@@ -68,7 +68,7 @@ def run_aggregates(data_file1, data_file2):
         # xlabel_y_coordinate=-0.16,
         xlabel="Score",
     )
-    plt.savefig("sac_vs_td3_aggregates.pdf")
+    plt.savefig("dqn_vs_ppo_aggregates.pdf")
     plt.show()
     plt.close()
 
@@ -85,7 +85,7 @@ def run_perf_profiles(data_file1, data_file2):
     max_value2 = np.max(data2)
     max_value = max(max_value1, max_value2)
 
-    score_dict = {"sac": data1, "td3": data2}
+    score_dict = {"dqn": data1, "ppo": data2}
 
     tau = np.linspace(min_value, max_value, 201)
     # Higher value of reps corresponds to more accurate estimates but are slower
@@ -109,7 +109,7 @@ def run_perf_profiles(data_file1, data_file2):
     )
 
     ax.axhline(0.5, ls="--", color="k", alpha=0.4)
-    plt.savefig("sac_vs_td3_perf_profiles.pdf")
+    plt.savefig("dqn_vs_ppo_perf_profiles.pdf")
     plt.show()
     plt.close()
 

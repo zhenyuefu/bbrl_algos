@@ -23,7 +23,7 @@ gym_env:
 
 algorithm:
   architecture:
-    hidden_sizes: [64, 64]
+    hidden_sizes: [256, 256]
 
   seed:
     train: 32

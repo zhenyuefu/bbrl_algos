@@ -1,6 +1,7 @@
     save_best: True
     plot_agents: True
-
+    collect_stats: True
+    
     logger:
       classname: bbrl.utils.logger.TFLogger
       log_dir: ./ppo_logs/
