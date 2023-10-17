@@ -148,7 +148,7 @@ def run_ppo_penalty(cfg, logger, trial=None):
         directory = "./ppo_data/"
         if not os.path.exists(directory):
             os.makedirs(directory)
-        filename = directory + "ppo.data"
+        filename = directory + "ppo_" + cfg.gym_env.env_name + ".data"
         fo = open(filename, "wb")
         stats_data = []
 

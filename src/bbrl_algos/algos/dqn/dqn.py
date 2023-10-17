@@ -101,37 +101,6 @@ def compute_critic_loss(
     return nn.MSELoss()(qvals, target)
 
 
-"""
-def compute_critic_loss(
-    discount_factor, gae_factor, reward, must_bootstrap, q_values,
-):
-    Compute critic loss
-    Args:
-        discount_factor (float): The discount factor
-        reward (torch.Tensor): a (2 × T × B) tensor containing the rewards
-        must_bootstrap (torch.Tensor): a (2 × T × B) tensor containing 0 if the episode is completed at time $t$
-        action (torch.LongTensor): a (2 × T) long tensor containing the chosen action
-        q_values (torch.Tensor): a (2 × T × B × A) tensor containing Q values
-        q_target (torch.Tensor, optional): a (2 × T × B × A) tensor containing target Q values
-
-    Returns:
-        torch.Scalar: The loss
-
-    v_values = q_values.max(axis=-1)[0]
-    # print(reward.shape, must_bootstrap.shape, v_values.shape)
-    advantage = gae(
-        v_values,
-        reward,
-        must_bootstrap,
-        discount_factor,
-        gae_factor,
-    )
-    td_error = advantage**2
-    critic_loss = td_error.mean()
-    return critic_loss
-"""
-
-
 # %%
 def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     # obs_space = train_env_agent.get_observation_space()
@@ -185,7 +154,7 @@ def run_dqn(cfg, logger, trial=None):
         directory = "./dqn_data/"
         if not os.path.exists(directory):
             os.makedirs(directory)
-        filename = directory + "dqn.data"
+        filename = directory + "dqn_" + cfg.gym_env.env_name + ".data"
         fo = open(filename, "wb")
         stats_data = []
 
@@ -193,7 +162,6 @@ def run_dqn(cfg, logger, trial=None):
     train_env_agent, eval_env_agent = local_get_env_agents(cfg)
     print(train_env_agent.envs[0])
     print(eval_env_agent.envs[0])
-    train_env_agent.envs[0].env.env.init_draw("The train maze")
 
     # 2) Create the DQN-like Agent
     train_agent, eval_agent, q_agent = create_dqn_agent(
@@ -283,7 +251,6 @@ def run_dqn(cfg, logger, trial=None):
         if nb_steps - tmp_steps_eval > cfg.algorithm.eval_interval:
             tmp_steps_eval = nb_steps
             eval_workspace = Workspace()  # Used for evaluation
-            # eval_env_agent.envs[0].init_draw("The eval maze")
             eval_agent(
                 eval_workspace,
                 t=0,
@@ -354,9 +321,8 @@ def run_dqn(cfg, logger, trial=None):
 # %%
 @hydra.main(
     config_path="configs/",
-    # config_name="continuous_maze.yaml",
-    config_name="cartpole.yaml",
-    # config_name="cartpole_wandb_optuna_choices.yaml",
+    # config_name="dqn_cartpole.yaml",
+    config_name="dqn_lunar_lander.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
