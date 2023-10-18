@@ -26,7 +26,7 @@ algorithm:
     hidden_sizes: [256, 256]
 
   seed:
-    train: 32
+    train: 335
     eval: 99
     q: 123
     explorer: 456

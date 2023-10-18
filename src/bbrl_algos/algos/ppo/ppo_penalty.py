@@ -375,8 +375,8 @@ def run_ppo_penalty(cfg, logger, trial=None):
 @hydra.main(
     config_path="./configs/",
     # config_name="ppo_lunarlander_continuous.yaml",
-    config_name="ppo_cartpole.yaml",
-    # config_name="ppo_lunarlander.yaml",
+    # config_name="ppo_cartpole.yaml",
+    config_name="ppo_lunarlander.yaml",
     # config_name="ppo_swimmer.yaml",
     # config_name="ppo_pendulum.yaml",
     # config_name="ppo_cartpole_continuous.yaml",

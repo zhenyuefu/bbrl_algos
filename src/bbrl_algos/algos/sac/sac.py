@@ -103,7 +103,7 @@ def setup_entropy_optimizers(cfg):
             [log_entropy_coef], **entropy_coef_optimizer_args
         )
     else:
-        log_entropy_coef = 0
+        log_entropy_coef = torch.Tensor(np.zeros(cfg.algorithm.batch_size))  # was =0
         entropy_coef_optimizer = None
     return entropy_coef_optimizer, log_entropy_coef
 
@@ -309,8 +309,7 @@ def run_sac(cfg, logger, trial=None):
             # Entropy coef update part #
             if entropy_coef_optimizer is not None:
                 # See Eq. (17) of the SAC and Applications paper
-                # log. probs have been computed when computing
-                # the actor loss
+                # log. probs have been computed when computing the actor loss
                 action_logprobs_rb = rb_workspace["policy/action_logprobs"].detach()
                 entropy_coef_loss = -(
                     log_entropy_coef.exp() * (action_logprobs_rb + target_entropy)
@@ -319,7 +318,8 @@ def run_sac(cfg, logger, trial=None):
                 entropy_coef_loss.backward()
                 entropy_coef_optimizer.step()
                 logger.add_log("entropy_coef_loss", entropy_coef_loss, nb_steps)
-                logger.add_log("entropy_coef", ent_coef, nb_steps)
+            logger.add_log("entropy_coef", ent_coef, nb_steps)
+            logger.add_log("target_entropy", target_entropy, nb_steps)
 
             # Soft update of target q function
             tau = cfg.algorithm.tau_target
@@ -344,7 +344,9 @@ def run_sac(cfg, logger, trial=None):
             if mean > best_reward:
                 best_reward = mean
 
-            print(f"nb steps: {nb_steps}, reward: {mean:.0f}, best: {best_reward:.0f}")
+            print(
+                f"nb steps: {nb_steps}, reward: {mean:.02f}, best: {best_reward:.02f}"
+            )
             if cfg.save_best and best_reward == mean:
                 save_best(
                     actor, cfg.gym_env.env_name, mean, "./sac_best_agents/", "sac"
