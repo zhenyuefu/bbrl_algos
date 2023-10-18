@@ -91,21 +91,20 @@ def setup_optimizers(cfg, actor, critic_1, critic_2):
 
 
 def setup_entropy_optimizers(cfg):
-    if cfg.algorithm.target_entropy == "auto":
+    if cfg.algorithm.entropy_mode == "auto":
         entropy_coef_optimizer_args = get_arguments(cfg.entropy_coef_optimizer)
         # Note: we optimize the log of the entropy coef which is slightly different from the paper
         # as discussed in https://github.com/rail-berkeley/softlearning/issues/37
         # Comment and code taken from the SB3 version of SAC
         log_entropy_coef = torch.log(
-            torch.ones(1) * cfg.algorithm.entropy_coef
+            torch.ones(1) * cfg.algorithm.init_entropy_coef
         ).requires_grad_(True)
         entropy_coef_optimizer = get_class(cfg.entropy_coef_optimizer)(
             [log_entropy_coef], **entropy_coef_optimizer_args
         )
+        return entropy_coef_optimizer, log_entropy_coef
     else:
-        log_entropy_coef = torch.Tensor(np.zeros(cfg.algorithm.batch_size))  # was =0
-        entropy_coef_optimizer = None
-    return entropy_coef_optimizer, log_entropy_coef
+        return None, None
 
 
 # %%
@@ -144,11 +143,12 @@ def compute_critic_loss(
         # Replay the current actor on the replay buffer to get actions of the
         # current actor
         t_actor(rb_workspace, t=1, n_steps=1, stochastic=True)
-        action_logprobs_next = rb_workspace["policy/action_logprobs"]
 
         # Compute target q_values from both target critics: at t+1, we have
         # Q(s+1,a+1) from the (s+1,a+1) where a+1 has been replaced in the RB
         target_q_agents(rb_workspace, t=1, n_steps=1)
+
+        action_logprobs_next = rb_workspace["policy/action_logprobs"]
 
     q_values_rb_1, q_values_rb_2, post_q_values_1, post_q_values_2 = rb_workspace[
         "critic-1/q_values",
@@ -201,7 +201,10 @@ def compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace):
 
 def run_sac(cfg, logger, trial=None):
     best_reward = float("-inf")
-    ent_coef = cfg.algorithm.entropy_coef
+
+    # init_entropy_coef is the initial value of the entropy coef alpha.
+    ent_coef = cfg.algorithm.init_entropy_coef
+    tau = cfg.algorithm.tau_target
 
     # 2) Create the environment agent
     train_env_agent, eval_env_agent = get_env_agents(cfg)
@@ -231,12 +234,10 @@ def run_sac(cfg, logger, trial=None):
     nb_steps = 0
     tmp_steps = 0
 
-    # Initial value of the entropy coef alpha. If target_entropy is not auto,
-    # will remain fixed
-    if cfg.algorithm.target_entropy == "auto":
+    # If entropy_mode is not auto, the entropy coefficient ent_coef will remain fixed
+    if cfg.algorithm.entropy_mode == "auto":
+        # target_entropy is \mathcal{H}_0 in the SAC and aplications paper.
         target_entropy = -np.prod(train_env_agent.action_space.shape).astype(np.float32)
-    else:
-        target_entropy = cfg.algorithm.target_entropy
 
     # Training loop
     while nb_steps < cfg.algorithm.n_steps:
@@ -268,7 +269,8 @@ def run_sac(cfg, logger, trial=None):
             rb_workspace = rb.get_shuffled(cfg.algorithm.batch_size)
 
             terminated, reward = rb_workspace["env/terminated", "env/reward"]
-            ent_coef = torch.exp(log_entropy_coef.detach())
+            if entropy_coef_optimizer is not None:
+                ent_coef = torch.exp(log_entropy_coef.detach())
 
             # Critic update part #
             critic_optimizer.zero_grad()
@@ -319,10 +321,8 @@ def run_sac(cfg, logger, trial=None):
                 entropy_coef_optimizer.step()
                 logger.add_log("entropy_coef_loss", entropy_coef_loss, nb_steps)
             logger.add_log("entropy_coef", ent_coef, nb_steps)
-            logger.add_log("target_entropy", target_entropy, nb_steps)
 
             # Soft update of target q function
-            tau = cfg.algorithm.tau_target
             soft_update_params(critic_1, target_critic_1, tau)
             soft_update_params(critic_2, target_critic_2, tau)
             # soft_update_params(actor, target_actor, tau)
