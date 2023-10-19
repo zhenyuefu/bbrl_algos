@@ -112,7 +112,7 @@ def compute_critic_loss(
     cfg,
     reward,
     must_bootstrap,
-    t_actor,
+    current_actor,
     q_agents,
     target_q_agents,
     rb_workspace,
@@ -125,7 +125,7 @@ def compute_critic_loss(
         cfg: The experimental configuration
         reward: Tensor (2xS) of rewards
         must_bootstrap: Tensor (S) of indicators
-        t_actor: The actor agent (as a TemporalAgent)
+        current_actor: The actor agent (as a TemporalAgent)
         q_agents: The critics (as a TemporalAgent)
         target_q_agents: The target of the critics (as a TemporalAgent)
         rb_workspace: The transition workspace
@@ -142,7 +142,7 @@ def compute_critic_loss(
     with torch.no_grad():
         # Replay the current actor on the replay buffer to get actions of the
         # current actor
-        t_actor(rb_workspace, t=1, n_steps=1, stochastic=True)
+        current_actor(rb_workspace, t=1, n_steps=1, stochastic=True)
 
         # Compute target q_values from both target critics: at t+1, we have
         # Q(s+1,a+1) from the (s+1,a+1) where a+1 has been replaced in the RB
@@ -175,18 +175,18 @@ def compute_critic_loss(
 
 
 # %%
-def compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace):
+def compute_actor_loss(ent_coef, current_actor, q_agents, rb_workspace):
     """
     Actor loss computation
     :param ent_coef: The entropy coefficient $\alpha$
-    :param t_actor: The actor agent (temporal agent)
+    :param current_actor: The actor agent (temporal agent)
     :param q_agents: The critics (as temporal agent)
     :param rb_workspace: The replay buffer (2 time steps, $t$ and $t+1$)
     """
 
     # Recompute the q_values from the current actor, not from the actions in the buffer
 
-    t_actor(rb_workspace, t=0, n_steps=1, stochastic=True)
+    current_actor(rb_workspace, t=0, n_steps=1, stochastic=True)
     action_logprobs_new = rb_workspace["policy/action_logprobs"]
 
     q_agents(rb_workspace, t=0, n_steps=1)
@@ -220,7 +220,7 @@ def run_sac(cfg, logger, trial=None):
         target_critic_2,
     ) = create_sac_agent(cfg, train_env_agent, eval_env_agent)
 
-    t_actor = TemporalAgent(actor)
+    current_actor = TemporalAgent(actor)
     q_agents = TemporalAgent(Agents(critic_1, critic_2))
     target_q_agents = TemporalAgent(Agents(target_critic_1, target_critic_2))
     train_workspace = Workspace()
@@ -279,7 +279,7 @@ def run_sac(cfg, logger, trial=None):
                 cfg,
                 reward,
                 ~terminated[1],
-                t_actor,
+                current_actor,
                 q_agents,
                 target_q_agents,
                 rb_workspace,
@@ -300,7 +300,9 @@ def run_sac(cfg, logger, trial=None):
 
             # Actor update part #
             actor_optimizer.zero_grad()
-            actor_loss = compute_actor_loss(ent_coef, t_actor, q_agents, rb_workspace)
+            actor_loss = compute_actor_loss(
+                ent_coef, current_actor, q_agents, rb_workspace
+            )
             logger.add_log("actor_loss", actor_loss, nb_steps)
             actor_loss.backward()
             torch.nn.utils.clip_grad_norm_(
@@ -363,10 +365,11 @@ def load_best(best_filename):
 # %%
 @hydra.main(
     config_path="./configs/",
-    # config_name="sac_cartpolecontinuous.yaml",
+    # config_name="sac_cartpole.yaml",
+    config_name="sac_cartpolecontinuous.yaml",
     # config_name="sac_pendulum.yaml",
     # config_name="sac_swimmer_optuna.yaml",
-    config_name="sac_swimmer.yaml",
+    # config_name="sac_swimmer.yaml",
     # config_name="sac_torcs.yaml",
     # version_base="1.3",
 )

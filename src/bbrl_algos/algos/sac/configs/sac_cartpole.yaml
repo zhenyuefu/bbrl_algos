@@ -19,7 +19,7 @@
             max_grad_norm: 0.5
             n_envs: 8
             n_steps_train: 20
-            n_steps: 70000
+            n_steps: 300_000
             eval_interval: 2000
             buffer_size: 2e5
             batch_size: 64
