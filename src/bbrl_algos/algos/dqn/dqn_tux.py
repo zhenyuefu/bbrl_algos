@@ -29,7 +29,7 @@ from bbrl.agents import TemporalAgent, Agents, PrintAgent
 from bbrl.workspace import Workspace
 
 from bbrl_algos.models.exploration_agents import EGreedyActionSelector
-from bbrl_algos.models.critics import DiscreteQAgent
+from bbrl_algos.models.tux_actors import DQNActor
 from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.utils import save_best
 
@@ -103,21 +103,9 @@ def compute_critic_loss(
 
 # %%
 def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
-    # obs_space = train_env_agent.get_observation_space()
-    # obs_shape = obs_space.shape if len(obs_space.shape) > 0 else obs_space.n
 
-    # act_space = train_env_agent.get_action_space()
-    # act_shape = act_space.shape if len(act_space.shape) > 0 else act_space.n
-
-    state_dim, action_dim = train_env_agent.get_obs_and_actions_sizes()
-    print(cfg_algo.architecture.hidden_sizes)
-
-    critic = DiscreteQAgent(
-        state_dim=state_dim,
-        hidden_layers=list(cfg_algo.architecture.hidden_sizes),
-        action_dim=action_dim,
-        seed=cfg_algo.seed.q,
-    )
+    # we could only give it the obs space and the action space
+    critic = DQNActor(train_env_agent)
 
     explorer = EGreedyActionSelector(
         name="action_selector",
