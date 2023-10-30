@@ -52,7 +52,7 @@ class DQNActor(Agent):
             (self.input_module.size, 50, 50, self.actions_ix[-1]), nn.ReLU()
         )
 
-    def forward(self, t):
+    def forward(self, t, **kwargs):
         x_c = self.get(("env/env_obs/continuous", t))
         x_d = self.get(("env/env_obs/discrete", t))
         y = self.input_module(x_c, x_d)
@@ -61,6 +61,23 @@ class DQNActor(Agent):
         for i in range(len(self.actions_ix) - 1):
             action = y[:, self.actions_ix[i] : self.actions_ix[i + 1]]
             self.set((f"action/logits/{i}", t), action)
+
+
+class ContinuousActor(Agent):
+    def __init__(self, env):
+        super().__init__()
+        self.input_module = InputModule(env.observation_space)
+        self.mlp = build_mlp(
+            (self.input_module.size, 50, 50, env.action_space.shape[0]), nn.ReLU()
+        )
+
+    def forward(self, t, **kwargs):
+        x_c = self.get(("env/env_obs/continuous", t))
+        x_d = self.get(("env/env_obs/discrete", t))
+        y = self.input_module(x_c, x_d)
+        action = self.mlp(y)
+
+        self.set(("action", t), action)
 
 
 class RandomActor(Agent):
