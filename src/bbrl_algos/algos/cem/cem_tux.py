@@ -14,7 +14,11 @@ from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.hyper_params import launch_optuna
 from bbrl_algos.models.utils import save_best
 
-import pystk2_gymnasium
+from bbrl.agents.gymnasium import make_env, GymAgent, ParallelGymAgent
+from functools import partial
+from bbrl.utils.chrono import Chrono
+
+import pystk2_gymnasium as pystk2
 
 # Neural network models for actors and critics
 from bbrl_algos.models.actors import (
@@ -30,6 +34,16 @@ from bbrl.visu.plot_policies import plot_policy
 import matplotlib
 
 matplotlib.use("TkAgg")
+
+
+def get_local_env(cfg):
+    eval_env_agent = ParallelGymAgent(
+        partial(make_env, cfg.gym_env.env_name, autoreset=False, track="sandtrack"),
+        cfg.algorithm.n_envs_eval,
+        include_last_state=True,
+        seed=cfg.algorithm.seed.eval,
+    )
+    return eval_env_agent
 
 
 class CovMatrix:
@@ -54,20 +68,20 @@ class CovMatrix:
 
 
 # Create the CEM Agent
-def create_CEM_agent(env_agent):
+def create_CEM_agent(env_agent, cfg):
     policy = ContinuousActor(env_agent)
+    policy.seed(cfg.algorithm.seed.actor)
     ev_agent = Agents(env_agent, policy)
     eval_agent = TemporalAgent(ev_agent)
-
     return eval_agent
 
 
 def run_cem(cfg, logger, trial=None):
-    eval_env_agent = get_eval_env_agent(cfg)
+    eval_env_agent = get_local_env(cfg)
 
     pop_size = cfg.algorithm.pop_size
 
-    eval_agent = create_CEM_agent(eval_env_agent)
+    eval_agent = create_CEM_agent(eval_env_agent, cfg)
 
     centroid = torch.nn.utils.parameters_to_vector(eval_agent.parameters())
     matrix = CovMatrix(
@@ -107,10 +121,11 @@ def run_cem(cfg, logger, trial=None):
             if cfg.save_best and mean_reward > best_score:
                 best_score = mean_reward
                 print(f"nb_steps: {nb_steps}, best score: {best_score:.2f}")
+                best_policy = eval_agent.agent.agents[1]
                 save_best(
-                    eval_agent,
+                    eval_agent.agent.agents[1],
                     cfg.gym_env.env_name,
-                    mean_reward,
+                    best_score,
                     "./cem_best_agents/",
                     "cem",
                 )
@@ -137,7 +152,7 @@ def run_cem(cfg, logger, trial=None):
         matrix.update_covariance(elites_weights)
         if cfg.verbose:
             print("---------------------")
-    return best_score
+    return best_score, best_policy, eval_env_agent
 
 
 # %%
@@ -146,13 +161,17 @@ def run_cem(cfg, logger, trial=None):
     config_name="cem_tux.yaml",
 )
 def main(cfg_raw: DictConfig):
+    chrono = Chrono()
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
 
     if "optuna" in cfg_raw:
         launch_optuna(cfg_raw, run_cem)
     else:
         logger = Logger(cfg_raw)
-        run_cem(cfg_raw, logger)
+        best_score, best_policy, eval_env_agent = run_cem(cfg_raw, logger)
+    # pystk2.init(pystk2.GraphicsConfig.ld())
+
+    chrono.stop()
 
 
 if __name__ == "__main__":

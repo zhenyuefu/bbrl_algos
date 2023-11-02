@@ -164,6 +164,69 @@ class DiscreteActor(BaseActor):
         return action
 
 
+class DiscretePPOActor(BaseActor):
+    def __init__(
+        self, state_dim, hidden_size, n_actions, name="policy", *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.model = build_ortho_mlp(
+            [state_dim] + list(hidden_size) + [n_actions], activation=nn.ReLU()
+        )
+        self.set_name(name)
+
+    def set_name(self, name):
+        self.name = name
+
+    def get_distribution(self, obs):
+        scores = self.model(obs)
+        probs = torch.softmax(scores, dim=-1)
+        return torch.distributions.Categorical(probs), scores
+
+    def forward(
+        self, t, stochastic=False, predict_proba=False, compute_entropy=False, **kwargs
+    ):
+        """
+        Compute the action given either a time step (looking into the workspace)
+        or an observation (in kwargs)
+        If predict_proba is true, the agent takes the action already written in the workspace and adds its probability
+        Otherwise, it writes the new action
+        """
+        if "observation" in kwargs:
+            observation = kwargs["observation"]
+        else:
+            observation = self.get(("env/env_obs", t))
+        dist, scores = self.get_distribution(observation)
+        probs = torch.softmax(scores, dim=-1)
+
+        if compute_entropy:
+            entropy = dist.entropy()
+            self.set(("entropy", t), entropy)
+
+        if predict_proba:
+            action = self.get(("action", t))
+            log_prob = probs[torch.arange(probs.size()[0]), action].log()
+            self.set((f"{self.name}/logprob_predict", t), log_prob)
+        else:
+            if stochastic:
+                action = dist.sample()
+            else:
+                action = scores.argmax(1)
+
+            log_probs = probs[torch.arange(probs.size()[0]), action].log()
+
+            self.set(("action", t), action)
+            self.set((f"{self.name}/action_logprobs", t), log_probs)
+
+    def predict_action(self, obs, stochastic=False):
+        dist, scores = self.get_distribution(obs)
+
+        if stochastic:
+            action = dist.sample()
+        else:
+            action = scores.argmax(0)
+        return action
+
+
 # All the actors below use a Gaussian policy, that is the output is Normal distribution
 
 

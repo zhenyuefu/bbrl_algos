@@ -36,7 +36,6 @@ from bbrl_algos.models.utils import save_best
 from bbrl.visu.plot_critics import plot_discrete_q, plot_critic
 from bbrl_algos.models.hyper_params import launch_optuna
 
-from bbrl.utils.functional import gae
 from bbrl.utils.chrono import Chrono
 
 # HYDRA_FULL_ERROR = 1
@@ -97,7 +96,8 @@ def compute_critic_loss(
     max_q = q_target[1].amax(dim=-1).detach()
     target = reward[1] + discount_factor * max_q * must_bootstrap[1]
     act = action[0].unsqueeze(dim=-1)
-    qvals = q_values[0].gather(dim=1, index=act).squeeze(dim=1)
+    qvals = q_values[0].gather(dim=1, index=act)
+    qvals = qvals.squeeze(dim=1)
     return nn.MSELoss()(qvals, target)
 
 
@@ -110,7 +110,6 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     # act_shape = act_space.shape if len(act_space.shape) > 0 else act_space.n
 
     state_dim, action_dim = train_env_agent.get_obs_and_actions_sizes()
-    print(cfg_algo.architecture.hidden_sizes)
 
     critic = DiscreteQAgent(
         state_dim=state_dim,
@@ -160,8 +159,6 @@ def run_dqn(cfg, logger, trial=None):
 
     # 1) Create the environment agent
     train_env_agent, eval_env_agent = local_get_env_agents(cfg)
-    print(train_env_agent.envs[0])
-    print(eval_env_agent.envs[0])
 
     # 2) Create the DQN-like Agent
     train_agent, eval_agent, q_agent = create_dqn_agent(
