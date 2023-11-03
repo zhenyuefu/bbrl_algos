@@ -12,7 +12,6 @@ from typing import Callable, List
 
 import hydra
 import optuna
-from bbrl.utils.replay_buffer import ReplayBuffer
 from omegaconf import DictConfig
 
 # %%
@@ -34,9 +33,10 @@ from bbrl_algos.models.critics import DiscreteQAgent
 from bbrl_algos.models.loggers import Logger
 from bbrl_algos.models.utils import save_best
 
+
 from bbrl.visu.plot_critics import plot_discrete_q, plot_critic
 from bbrl_algos.models.hyper_params import launch_optuna
-
+from bbrl.utils.replay_buffer import ReplayBuffer
 from bbrl.utils.functional import gae
 from bbrl.utils.chrono import Chrono
 
@@ -115,7 +115,6 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     # act_shape = act_space.shape if len(act_space.shape) > 0 else act_space.n
 
     state_dim, action_dim = train_env_agent.get_obs_and_actions_sizes()
-    print(cfg_algo.architecture.hidden_sizes)
 
     critic = DiscreteQAgent(
         state_dim=state_dim,

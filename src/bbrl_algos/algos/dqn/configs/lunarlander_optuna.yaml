@@ -1,5 +1,5 @@
 # Caution: use only the 'suggest_type' in case of using optuna
-save_best: True
+save_best: False
 plot_agents: False
 collect_stats: True
 
@@ -10,11 +10,27 @@ hydra:
   run:
     dir: ${log_dir}/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
+optuna:
+  study:
+    _target_: optuna.create_study
+    study_name: dqn_vec
+    direction: maximize
+    pruner:
+      _target_: optuna.pruners.MedianPruner
+      n_startup_trials: 5
+      n_warmup_steps: 5
+      interval_steps: 1
+  optimize:
+    n_trials: 40
+    timeout: 360000
+    n_jobs: 1
+
+
 logger:
   classname: bbrl.utils.logger.WandbLogger
   project: "lunarlander"
-  group: "dqn"
-  tags: "manual"
+  group: "dqn_optuna"
+  tags: "optuna"
   job_type: test
   log_dir: ${log_dir}
   cache_size: 10000
@@ -42,19 +58,33 @@ algorithm:
     decay: 0.996
 
   buffer:
-    max_size: 50000
+    max_size:
+      suggest_type: categorical
+      choices:
+        - 20000
+        - 50000
+        - 100000
     batch_size: 500
     learning_starts: 4000
 
   target_critic_update_interval: 10000
-  max_grad_norm: 1.9
+  max_grad_norm:
+    suggest_type: float
+    low: 1
+    high: 2
 
-  nb_evals: 10
+  nb_evals: 8
   n_envs: 10
-  n_steps_train: 64
+  n_steps_train: 50
 
-  optim_n_updates: 10
-  discount_factor: 0.99
+  optim_n_updates:
+    suggest_type: int
+    low: 4
+    high: 10
+  discount_factor:
+    suggest_type: float
+    low: 0.97
+    high: 0.999
 
   n_steps: 2000000
   eval_interval: 5000
@@ -62,4 +92,7 @@ algorithm:
 
 optimizer:
   classname: torch.optim.Adam
-  lr: 0.0005
+  lr:
+    suggest_type: float
+    low: 0.0005
+    high: 0.005

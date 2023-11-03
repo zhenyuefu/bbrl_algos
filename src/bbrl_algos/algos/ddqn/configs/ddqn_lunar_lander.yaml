@@ -12,9 +12,9 @@ hydra:
 
 logger:
   classname: bbrl.utils.logger.WandbLogger
-  project: "ddqn_lunarlander"
-  group: "manual_optim_2"
-  tags: "lr5e4"
+  project: "lunarlander"
+  group: "ddqn"
+  tags: "manual"
   job_type: test
   log_dir: ${log_dir}
   cache_size: 10000
@@ -42,18 +42,18 @@ algorithm:
     decay: 0.996
 
   buffer:
-    max_size: 20000
+    max_size: 50000
     batch_size: 500
-    learning_starts: 2000
+    learning_starts: 4000
 
-  target_critic_update_interval: 50
-  max_grad_norm: 1.5
+  target_critic_update_interval: 10000
+  max_grad_norm: 1.9
 
   nb_evals: 10
   n_envs: 10
-  n_steps_train: 50
+  n_steps_train: 64
 
-  optim_n_updates: 3
+  optim_n_updates: 10
   discount_factor: 0.99
 
   n_steps: 2000000

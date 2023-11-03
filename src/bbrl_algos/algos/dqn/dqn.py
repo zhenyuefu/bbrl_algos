@@ -35,7 +35,7 @@ from bbrl_algos.models.utils import save_best
 
 from bbrl.visu.plot_critics import plot_discrete_q, plot_critic
 from bbrl_algos.models.hyper_params import launch_optuna
-
+from bbrl.utils.replay_buffer import ReplayBuffer
 from bbrl.utils.chrono import Chrono
 
 # HYDRA_FULL_ERROR = 1
@@ -117,6 +117,7 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
         action_dim=action_dim,
         seed=cfg_algo.seed.q,
     )
+    critic_target = copy.deepcopy(critic)
 
     explorer = EGreedyActionSelector(
         name="action_selector",
@@ -126,6 +127,7 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
         seed=cfg_algo.seed.explorer,
     )
     q_agent = TemporalAgent(critic)
+    q_agent_target = TemporalAgent(critic_target)
 
     tr_agent = Agents(train_env_agent, critic, explorer)  # , PrintAgent())
     ev_agent = Agents(eval_env_agent, critic)
@@ -134,7 +136,7 @@ def create_dqn_agent(cfg_algo, train_env_agent, eval_env_agent):
     train_agent = TemporalAgent(tr_agent)
     eval_agent = TemporalAgent(ev_agent)
 
-    return train_agent, eval_agent, q_agent
+    return train_agent, eval_agent, q_agent, q_agent_target
 
 
 # %%
@@ -161,18 +163,22 @@ def run_dqn(cfg, logger, trial=None):
     train_env_agent, eval_env_agent = local_get_env_agents(cfg)
 
     # 2) Create the DQN-like Agent
-    train_agent, eval_agent, q_agent = create_dqn_agent(
+    train_agent, eval_agent, q_agent, q_agent_target = create_dqn_agent(
         cfg.algorithm, train_env_agent, eval_env_agent
     )
 
     # 3) Create the training workspace
     train_workspace = Workspace()  # Used for training
 
+    # 4) Create the replay buffer
+    replay_buffer = ReplayBuffer(max_size=cfg.algorithm.buffer.max_size)
+
     # 5) Configure the optimizer
     optimizer = setup_optimizer(cfg.optimizer, q_agent)
 
     # 6) Define the steps counters
     nb_steps = 0
+    tmp_steps_target_update = 0
     tmp_steps_eval = 0
 
     while nb_steps < cfg.algorithm.n_steps:
@@ -211,38 +217,67 @@ def run_dqn(cfg, logger, trial=None):
 
         nb_steps += transition_workspace.batch_size()
 
-        # The q agent needs to be executed on the rb_workspace workspace (gradients are removed in workspace).
-        q_agent(transition_workspace, t=0, n_steps=2, choose_action=False)
+        # Store the transition in the replay buffer
+        replay_buffer.put(transition_workspace)
 
-        q_values, terminated, reward, action = transition_workspace[
-            "critic/q_values",
-            "env/terminated",
-            "env/reward",
-            "action",
-        ]
+        for _ in range(cfg.algorithm.optim_n_updates):
+            # Sample a batch from the replay buffer
+            sampled_trans_ws = replay_buffer.get_shuffled(
+                cfg.algorithm.buffer.batch_size
+            )
 
-        # Determines whether values of the critic should be propagated
-        # True if the task was not terminated.
-        must_bootstrap = ~terminated
+            # The q agent needs to be executed on the rb_workspace workspace (gradients are removed in workspace).
+            q_agent(sampled_trans_ws, t=0, n_steps=2, choose_action=False)
 
-        critic_loss = compute_critic_loss(
-            cfg.algorithm.discount_factor,
-            reward,
-            must_bootstrap,
-            action,
-            q_values,
-        )
+            q_values, terminated, reward, action = sampled_trans_ws[
+                "critic/q_values",
+                "env/terminated",
+                "env/reward",
+                "action",
+            ]
 
-        # Store the loss
-        logger.add_log("critic_loss", critic_loss, nb_steps)
+            # The q agent needs to be executed on the rb_workspace workspace (gradients are removed in workspace).
+            with torch.no_grad():
+                q_agent(sampled_trans_ws, t=0, n_steps=2, choose_action=False)
 
-        optimizer.zero_grad()
-        critic_loss.backward()
-        torch.nn.utils.clip_grad_norm_(
-            q_agent.parameters(), cfg.algorithm.max_grad_norm
-        )
+            # Compute the target q values
+            q_target = sampled_trans_ws["critic/q_values"]
 
-        optimizer.step()
+            # Determines whether values of the critic should be propagated
+            # True if the task was not terminated.
+            must_bootstrap = ~terminated
+
+            # Store the replay buffer size
+            logger.add_log("replay_buffer_size", replay_buffer.size(), nb_steps)
+
+            if replay_buffer.size() > cfg.algorithm.buffer.learning_starts:
+                # Compute critic loss
+                critic_loss = compute_critic_loss(
+                    cfg.algorithm.discount_factor,
+                    reward,
+                    must_bootstrap,
+                    action,
+                    q_values,
+                    q_target,
+                )
+
+                # Store the loss
+                logger.add_log("critic_loss", critic_loss, nb_steps)
+
+                optimizer.zero_grad()
+                critic_loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    q_agent.parameters(), cfg.algorithm.max_grad_norm
+                )
+                optimizer.step()
+
+        # Update the target network
+        if (
+                nb_steps - tmp_steps_target_update
+                > cfg.algorithm.target_critic_update_interval
+        ):
+            tmp_steps_target_update = nb_steps
+            q_agent_target.agent = copy.deepcopy(q_agent.agent)
 
         # Evaluate the agent
         if nb_steps - tmp_steps_eval > cfg.algorithm.eval_interval:
@@ -284,7 +319,7 @@ def run_dqn(cfg, logger, trial=None):
                         critic,
                         eval_env_agent,
                         best_reward,
-                        "./dqn_plots/",
+                        "./ddqn_plots/",
                         cfg.gym_env.env_name,
                         input_action="policy",
                     )
@@ -292,17 +327,13 @@ def run_dqn(cfg, logger, trial=None):
                         critic,
                         eval_env_agent,
                         best_reward,
-                        "./dqn_plots2/",
+                        "./ddqn_plots2/",
                         cfg.gym_env.env_name,
                         input_action=None,
                     )
             if cfg.collect_stats:
                 stats_data.append(rewards)
 
-            if trial is not None:
-                trial.report(mean, nb_steps)
-                if trial.should_prune():
-                    raise optuna.TrialPruned()
 
     if cfg.collect_stats:
         # All rewards, dimensions (# of evaluations x # of episodes)
@@ -312,14 +343,13 @@ def run_dqn(cfg, logger, trial=None):
         fo.flush()
         fo.close()
 
-    return best_reward
+    return mean
 
 
 # %%
 @hydra.main(
     config_path="configs/",
-    # config_name="dqn_cartpole.yaml",
-    config_name="dqn_lunar_lander.yaml",
+    config_name="lunarlander_optuna.yaml",
 )  # , version_base="1.3")
 def main(cfg_raw: DictConfig):
     torch.random.manual_seed(seed=cfg_raw.algorithm.seed.torch)
