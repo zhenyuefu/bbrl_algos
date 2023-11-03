@@ -244,7 +244,8 @@ def run_dqn(cfg, logger, trial=None):
             ]
 
             # The q agent needs to be executed on the rb_workspace workspace (gradients are removed in workspace).
-            q_agent(sampled_trans_ws, t=0, n_steps=2, choose_action=False)
+            with torch.no_grad():
+                q_agent_target(sampled_trans_ws, t=0, n_steps=2, choose_action=False)
 
             # Compute the target q values
             q_target = sampled_trans_ws["critic/q_values"]
